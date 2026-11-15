@@ -5,7 +5,7 @@ name: prerender
 on:
   push:
     branches: [main]
-    paths: ["data/schedule.json", "songs/**", "mech/build.py", "mech/instruments.py", "src/studio/**"]
+    paths: ["data/schedule.json", "songs/**", "mech/build.py", "mech/instruments.py", "mech/listen.py", "mech/karaoke.py", "src/studio/**"]
   workflow_dispatch:
     inputs:
       force: { description: "render again even if a release exists", type: boolean, default: false }
@@ -27,7 +27,7 @@ jobs:
             posted=$(python3 -c "import json,sys; print(any(p['slug']=='$s' for p in json.load(open('data/published.json'))))")
             [ "$posted" = "True" ] && continue
             # the commit that last changed anything this reel is made from; a release made from an older one is redone
-            rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py "songs/$s")
+            rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py mech/listen.py mech/karaoke.py "songs/$s")
             have=$(gh release view "reel-$s" --json body -q .body 2>/dev/null | sed -n 's/^rev: //p')
             if [ "${{ inputs.force }}" != "true" ] && [ "$have" = "$rev" ]; then continue; fi
             todo+=("\"$s\"")
@@ -55,6 +55,6 @@ jobs:
         run: |
           s="${{ matrix.slug }}"
           gh release delete "reel-$s" -y --cleanup-tag 2>/dev/null || true
-          rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py "songs/$s")
+          rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py mech/listen.py mech/karaoke.py "songs/$s")
           gh release create "reel-$s" "out/$s/reel.mp4" "out/$s/cover.jpg" "out/$s/studio.json" --title "Reel: $s" --notes "Prerendered for Instagram.
           rev: $rev" --latest=false
