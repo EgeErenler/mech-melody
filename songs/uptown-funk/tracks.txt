@@ -1,0 +1,16 @@
+== source.mid
+   0  track 0                      notes  532  lyrics    0  channels [0]  range 24-50  program 71
+   1  track 1                      notes 1662  lyrics    0  channels [9]  range 27-82  program 0
+   2  Track 3                      notes  706  lyrics    0  channels [1]  range 48-77  program 28
+   3  track 3                      notes   31  lyrics    0  channels [2]  range 47-62  program 119
+   4  Track 5                      notes  601  lyrics    0  channels [3]  range 22-53  program 35
+   5  track 5                      notes  540  lyrics    0  channels [4]  range 50-86  program 61
+   6  track 6                      notes  114  lyrics    3  channels [5]  range 62-89  program 81
+   7  Track 8                      notes    4  lyrics    0  channels [6]  range 48-60  program 0
+   8  Track 9                      notes    8  lyrics    0  channels [7]  range 50-66  program 80
+   9  track 9                      notes  104  lyrics    2  channels [8]  range 44-67  program 126
+  10  track 10                     notes    8  lyrics    0  channels [10]  range 59-65  program 4
+  11  Track 12                     notes   72  lyrics    0  channels [11]  range 35-69  program 124
+  12  Track 13                     notes    2  lyrics    0  channels [12]  range 95-99  program 78
+  13  track 13                     notes  637  lyrics  253  channels [13]  range 38-86  program 72
+  14  track 14                     notes   47  lyrics    0  channels [14]  range 15-50  program 37

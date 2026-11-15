@@ -1,0 +1,8 @@
+== source-2.mid
+   0  Someone Like You             notes 1552  lyrics    0  channels [1, 2]  range 26-71  program 0
+
+== source-3.mid
+   0  Someone Like You             notes 1552  lyrics    0  channels [1, 2]  range 26-71  program 0
+
+== source.mid
+   0  Someone Like You             notes 3116  lyrics  504  channels [0, 1, 2, 3, 4, 6, 9]  range 26-88  program 34

@@ -1,0 +1,15 @@
+== source-2.mid
+   1  Vocal                        notes  393  lyrics  440  channels [2]  range 63-79  program 56
+   2  Staff-7                      notes   45  lyrics    0  channels [11]  range 60-60  program 14
+   3  Right Hand                   notes  688  lyrics    0  channels [0]  range 56-84  program 0
+   4  Left Hand                    notes 1639  lyrics    0  channels [1]  range 36-63  program 0
+   5  Staff-1                      notes  639  lyrics    0  channels [3]  range 56-84  program 48
+   6  Staff-6                      notes  198  lyrics    0  channels [8]  range 37-61  program 48
+   7  Staff-5                      notes   88  lyrics    0  channels [7]  range 24-51  program 34
+   8  Staff-2                      notes  578  lyrics    0  channels [4]  range 36-63  program 114
+   9  Staff-3                      notes  652  lyrics    0  channels [5]  range 56-84  program 49
+  10  Staff-4                      notes  639  lyrics    0  channels [6]  range 56-84  program 102
+  11  Staff-8                      notes  639  lyrics    0  channels [10]  range 56-84  program 91
+
+== source.mid
+   1  DNC_OrionString #2 (MIDI)    notes   38  lyrics    0  channels [0]  range 53-63  program 0

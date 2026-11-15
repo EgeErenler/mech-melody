@@ -1,0 +1,2 @@
+== source.mid
+   0  Blinding Lights - Weeknd     notes 3269  lyrics  506  channels [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]  range 22-87  program 33

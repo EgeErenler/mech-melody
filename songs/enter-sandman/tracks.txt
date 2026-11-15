@@ -1,0 +1,20 @@
+== source-2.mid
+   1  track 1                      notes  318  lyrics    0  channels [0]  range 40-57  program 25
+   2  track 2                      notes  318  lyrics    0  channels [2]  range 40-57  program 25
+   3  track 3                      notes  947  lyrics    0  channels [4]  range 40-57  program 30
+   4  track 4                      notes  933  lyrics    0  channels [6]  range 40-57  program 30
+   5  track 5                      notes 1075  lyrics    0  channels [8, 10]  range 40-88  program 30
+   6  track 6                      notes 1087  lyrics    0  channels [11, 12]  range 40-88  program 30
+   7  track 7                      notes  733  lyrics    0  channels [13]  range 40-57  program 30
+   8  track 8                      notes 1157  lyrics    0  channels [15]  range 28-40  program 87
+   9  track 9                      notes 2118  lyrics    0  channels [9]  range 36-57  program 0
+  10  track 10                     notes 2117  lyrics    0  channels [9]  range 36-57  program 0
+
+== source.mid
+   1  Guitar1                      notes  253  lyrics    0  channels [0]  range 40-55  program 27
+   2  Guitar2                      notes  224  lyrics    0  channels [12]  range 40-86  program 29
+   3  track 3                      notes   28  lyrics    0  channels [13]  range 57-86  program 29
+   4  Guitar3                      notes 1052  lyrics    0  channels [2]  range 52-69  program 30
+   5  Guitar4                      notes  933  lyrics    0  channels [4]  range 52-71  program 30
+   6  Bass                         notes 1017  lyrics    0  channels [11]  range 28-40  program 34
+   7  Drums                        notes 2035  lyrics    0  channels [9]  range 35-49  program None

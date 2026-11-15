@@ -1,0 +1,16 @@
+== source.mid
+   1  FINGERED BASS                notes  405  lyrics    0  channels [0]  range 28-52  program 33
+   2  GRAND PIANO                  notes 1309  lyrics    0  channels [1]  range 37-78  program 0
+   3  GRAND PIANO                  notes  156  lyrics    0  channels [2]  range 49-66  program 0
+   4  OVERDRIVEN GUITAR            notes   42  lyrics    0  channels [3]  range 54-73  program 29
+   5  OVERDRIVEN GUITAR            notes  473  lyrics    0  channels [4]  range 40-71  program 29
+   6  JAZZ GUITAR                  notes  310  lyrics    0  channels [5]  range 61-80  program 26
+   7  JAZZ GUITAR                  notes 3417  lyrics    0  channels [15]  range 44-69  program 26
+   8  CLEAN GUITAR                 notes 4238  lyrics    0  channels [14]  range 40-69  program 27
+   9  STRINGS  2                   notes  210  lyrics    0  channels [12]  range 56-81  program 49
+  10  MELODY 3                     notes   64  lyrics    0  channels [6]  range 54-73  program 53
+  11  MELODY 2                     notes   69  lyrics    0  channels [7]  range 54-76  program 53
+  12  MELODY 1                     notes  228  lyrics    0  channels [13]  range 57-78  program 53
+  13  MELODY                       notes  328  lyrics    0  channels [8]  range 56-76  program 52
+  14  DRUMSS                       notes 1404  lyrics    0  channels [9]  range 36-57  program None
+  15  WARM PAD                     notes  443  lyrics    0  channels [11]  range 40-69  program 89
