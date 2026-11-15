@@ -3,7 +3,7 @@ name: song request
 on:
   push:
     branches: [main]
-    paths: ["requests/*.json"]
+    paths: ["requests/*.json", "!requests/songs.json"]  # songs.json is the MIDI list (fetch-songs.yml)
 permissions:
   contents: write
 concurrency: { group: publish, cancel-in-progress: false }
@@ -21,7 +21,7 @@ jobs:
         with: { fetch-depth: 2 }
       - id: which
         run: |
-          f=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- 'requests/*.json' | head -1)
+          f=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- 'requests/*.json' ':!requests/songs.json' | head -1)
           echo "file=$f" >> "$GITHUB_OUTPUT"
           echo "request: $f"
       - uses: dtolnay/rust-toolchain@stable
