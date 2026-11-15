@@ -181,7 +181,7 @@ def soundfont() -> str | None:
     return None
 
 
-def render_sampled(kind: str, notes, length: float) -> "np.ndarray | None":
+def render_sampled(kind: str, notes, length: float, program: int | None = None) -> "np.ndarray | None":
     """Stereo float32 (n, 2) from the SoundFont, or None when FluidSynth or a SoundFont is missing."""
     sf = soundfont()
     if not sf or not _shutil.which("fluidsynth"):
@@ -189,6 +189,8 @@ def render_sampled(kind: str, notes, length: float) -> "np.ndarray | None":
     import mido
     import soundfile
     prog, gain = GM.get(kind, (0, 1.0))
+    if program is not None and kind != "drums":
+        prog = int(program)  # the arrangement's own instrument
     ch = 9 if kind == "drums" else 0
     mid = mido.MidiFile(ticks_per_beat=1000)
     tr = mido.MidiTrack()

@@ -1,0 +1,98 @@
+# Arranged from source-2.mid (python3 -m mech arrange). Window {'score': 1.609, 'repetition': 0.811, 'loudness': 0.367}.
+title: Viva la Vida
+artist: Coldplay
+language: en
+midi: source-2.mid
+start: 35.64
+end: 94.64
+fade_out: 1.5
+priority: 5
+parts:
+- name: Lead
+  role: lead
+  body: male
+  color: cyan
+  midi: source-2.mid
+  lyrics: karaoke
+  tone:
+    vibrato: 26
+    tension: 0.56
+    pressure: 9.8
+  track: 1
+  octave: -1
+- name: Bells
+  instrument: bells
+  midi: source-2.mid
+  color: pink
+  gain: 0.6
+  track: 2
+  program: 14
+  hidden: true
+- name: Piano
+  instrument: piano
+  midi: source-2.mid
+  color: green
+  gain: 0.6
+  track: 3
+  program: 0
+  hidden: true
+- name: Piano
+  instrument: piano
+  midi: source-2.mid
+  color: red
+  gain: 0.6
+  track: 4
+  program: 0
+- name: Strings
+  instrument: strings
+  midi: source-2.mid
+  color: violet
+  gain: 0.6
+  track: 5
+  program: 48
+  hidden: true
+- name: Strings
+  instrument: strings
+  midi: source-2.mid
+  color: blue
+  gain: 0.6
+  track: 6
+  program: 48
+  hidden: true
+- name: Bass
+  instrument: bass
+  midi: source-2.mid
+  color: white
+  gain: 0.8
+  track: 7
+  program: 34
+- name: Synth
+  instrument: synth
+  midi: source-2.mid
+  color: gold
+  gain: 0.6
+  track: 8
+  program: 114
+  hidden: true
+- name: Strings
+  instrument: strings
+  midi: source-2.mid
+  color: cyan
+  gain: 0.6
+  track: 9
+  program: 49
+- name: Pad
+  instrument: pad
+  midi: source-2.mid
+  color: pink
+  gain: 0.6
+  track: 10
+  program: 102
+- name: Pad
+  instrument: pad
+  midi: source-2.mid
+  color: green
+  gain: 0.6
+  track: 11
+  program: 91
+  hidden: true

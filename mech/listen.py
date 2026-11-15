@@ -87,7 +87,7 @@ def loudness(y: np.ndarray) -> float:
 
 # ------------------------------------------------------------------ the best stretch of the song
 
-def best_window(path: Path, length: float, skip_intro: float = 8.0) -> tuple[float, dict]:
+def best_window(path: Path, length: float, skip_intro: float = 8.0, bonus=None) -> tuple[float, dict]:
     """Where the strongest `length` seconds start: lots of what the song repeats (the chorus),
     loud and busy, starting on a section change at a bar line, and not the very beginning."""
     import librosa
@@ -133,6 +133,8 @@ def best_window(path: Path, length: float, skip_intro: float = 8.0) -> tuple[flo
         # the chorus should come early in the clip, not in its last seconds
         k = int(np.searchsorted(bt, t0 + length * 0.4))
         sc += 0.15 * float(score[i:k].mean() - score[k:j].mean())
+        if bonus:  # e.g. how much of the clip is sung
+            sc += bonus(t0)
         if sc > best:
             best, best_s, why = sc, t0, {"score": round(sc, 3), "repetition": round(float(norm(rep)[i:j].mean()), 3), "loudness": round(float(norm(br)[i:j].mean()), 3)}
     if best < -1e8:

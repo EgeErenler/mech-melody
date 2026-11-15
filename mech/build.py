@@ -62,6 +62,40 @@ def _part_notes(spec: dict, part: dict, d: Path) -> list:
     return out
 
 
+def _part_notes_full(spec: dict, part: dict, d: Path) -> list:
+    """All of a part's notes on the clip's clock (before the window is applied)."""
+    path = d / part.get("midi", spec["midi"])
+    notes = midi.by_channel(path, int(part["channel"])) if "channel" in part else midi.pick(midi.read(path), part["track"]).notes
+    shift = int(part.get("transpose", 0))
+    start = float(spec.get("start", 0))
+    return [midi.Note(n.start - start + LEAD_IN, n.end - start + LEAD_IN, n.pitch + shift, n.vel) for n in notes]
+
+
+def _karaoke(spec: dict, part: dict, d: Path, language: str) -> tuple[list, list, list]:
+    """The lead from a karaoke MIDI: words laid on the notes by their times over the whole song,
+    then cut to the clip. Returns (notes, syllables, lyric lines)."""
+    from . import karaoke, listen
+    path = d / part.get("lyrics_midi", part.get("midi", spec["midi"]))
+    start = float(spec.get("start", 0))
+    end = float(spec.get("end", 1e9))
+    ls = karaoke.lines(karaoke.lyric_events(path))
+    for ln in ls:
+        for w in ln["words"]:
+            w["t0"] += LEAD_IN - start
+            w["t1"] += LEAD_IN - start
+    full = midi.monophonic(_part_notes_full(spec, part, d))
+    notes, syls = listen.align(ls, [listen.N(n.start, n.end, n.pitch, n.vel) for n in full], language)
+    lo, hi = LEAD_IN, LEAD_IN + (end - start)
+    keep = [i for i, n in enumerate(notes) if lo <= n.start < hi]
+    notes = [midi.Note(notes[i].start, min(notes[i].end, hi), notes[i].pitch, notes[i].vel) for i in keep]
+    syls = [dict(syls[i]) for i in keep]
+    if syls:
+        if syls[0].get("melisma"):  # the clip starts inside a held note: sing it as a syllable
+            syls[0].pop("melisma")
+        syls[-1]["phraseEnd"] = True
+    return notes, syls, [ln["line"] for ln in ls]
+
+
 def _octave_fit(notes: list, body: str) -> int:
     if not notes:
         return 0
@@ -277,7 +311,7 @@ def build(slug: str, translate=None) -> dict:
         if "instrument" in p:
             kind = p["instrument"]
             length = max(n.end for n in notes) + 2
-            audio = None if p.get("synth") else instruments.render_sampled(kind, notes, length)
+            audio = None if p.get("synth") else instruments.render_sampled(kind, notes, length, program=p.get("program"))
             if audio is None:
                 audio = instruments.render(kind if kind in instruments.KINDS else "piano", notes, length, seed=k + 1)
             audio = audio * float(p.get("gain", 1.0))
@@ -285,7 +319,8 @@ def build(slug: str, translate=None) -> dict:
             group = "inst"
             entry.update(kind="instrument", instrument=kind, notes=[[round(n.start, 3), round(n.end, 3), n.pitch, n.vel] for n in notes])
             stems.append((audio, float(p.get("pan", 0.0)), group))
-            show_parts.append(entry)
+            if not p.get("hidden"):  # heard in the mix, not shown
+                show_parts.append(entry)
             continue
         body = entry["body"]
         if p.get("beatbox"):
@@ -299,14 +334,17 @@ def build(slug: str, translate=None) -> dict:
             entry.update(kind="voice", tele=f"{stem}.tele", role="beatbox", hits=[[h["t"], h["id"]] for h in hits])
             show_parts.append(entry)
             continue
-        if p.get("syllables"):
+        if p.get("lyrics") == "karaoke":
+            notes, syls, p["lines"] = _karaoke(spec, p, d, language)
+            p["syllables_ready"] = True
+        elif p.get("syllables"):
             syls = json.loads((d / p["syllables"]).read_text(encoding="utf-8"))
             notes = sorted(notes, key=lambda n: n.start)
             if len(syls) != len(notes):
                 rep.warn(f"{p['name']}: {len(syls)} syllables for {len(notes)} notes in the arrangement; the extra are dropped")
                 m = min(len(syls), len(notes))
                 syls, notes = syls[:m], notes[:m]
-        else:
+        elif not p.get("syllables_ready"):
             notes = midi.monophonic(notes)
         if p.get("octave", "auto") == "auto":
             sh = _octave_fit(notes, body)
@@ -314,7 +352,7 @@ def build(slug: str, translate=None) -> dict:
         else:
             notes = [midi.Note(n.start, n.end, n.pitch + 12 * int(p["octave"]), n.vel) for n in notes]
         lyr = p.get("lyrics", "")
-        if p.get("syllables"):
+        if p.get("syllables") or p.get("syllables_ready"):
             pass
         elif lyr == "midi":
             syls = _midi_lyrics(spec, p, d, notes, language)
@@ -326,7 +364,7 @@ def build(slug: str, translate=None) -> dict:
             syls = lang.syllables(" ".join([lyr[9:].strip()] * len(notes)), "en")
         else:
             syls = lang.syllables(lyr, language)
-        if not p.get("syllables"):
+        if not (p.get("syllables") or p.get("syllables_ready")):
             syls = assign(notes, syls, rep, p["name"])
         spell = {k.lower(): v for k, v in (spec.get("spell") or {}).items()}
         if spell:  # words spelled for the pronouncing dictionary, shown as they are written

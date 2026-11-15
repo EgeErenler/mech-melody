@@ -132,6 +132,14 @@ def main(argv: list[str]) -> None:
     elif cmd == "comments":
         from . import comments
         comments.run(dry=_flag(args, "--dry-run"))
+    elif cmd == "arrange":
+        import json
+        from . import arrange
+        from .paths import ROOT
+        voice = _opt(args, "--voice", "male")
+        reqs = {r["slug"]: r for r in json.loads((ROOT / "requests" / "songs.json").read_text(encoding="utf-8"))}
+        r = reqs.get(args[0], {"title": args[0], "artist": ""})
+        arrange.arrange(args[0], _opt(args, "--title", r["title"]), _opt(args, "--artist", r["artist"]), voice)
     elif cmd == "due":
         from . import schedule
         print(schedule.due() or "")

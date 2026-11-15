@@ -1,0 +1,82 @@
+# Arranged from source.mid (python3 -m mech arrange). Window {'score': 1.56, 'repetition': 0.602, 'loudness': 0.59}.
+title: Nothing Else Matters
+artist: Metallica
+language: en
+midi: source.mid
+start: 226.58
+end: 285.58
+fade_out: 1.5
+priority: 5
+parts:
+- name: Lead
+  role: lead
+  body: male
+  color: pink
+  midi: source.mid
+  lyrics: karaoke
+  tone:
+    vibrato: 26
+    tension: 0.56
+    pressure: 9.8
+  channel: 0
+  octave: 0
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: pink
+  gain: 0.6
+  channel: 1
+  program: 25
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: green
+  gain: 0.6
+  channel: 2
+  program: 27
+  hidden: true
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: red
+  gain: 0.6
+  channel: 3
+  program: 30
+  hidden: true
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: violet
+  gain: 0.6
+  channel: 4
+  program: 30
+  hidden: true
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: blue
+  gain: 0.6
+  channel: 5
+  program: 25
+  hidden: true
+- name: Guitar
+  instrument: guitar
+  midi: source.mid
+  color: white
+  gain: 0.6
+  channel: 6
+  program: 26
+  hidden: true
+- name: Bass
+  instrument: bass
+  midi: source.mid
+  color: gold
+  gain: 0.8
+  channel: 7
+  program: 34
+- name: Drums
+  instrument: drums
+  midi: source.mid
+  color: cyan
+  gain: 0.8
+  channel: 9

@@ -1,0 +1,65 @@
+# Arranged from source.mid (python3 -m mech arrange). Window {'score': 1.786, 'repetition': 0.726, 'loudness': 0.794}.
+title: Someone Like You
+artist: Adele
+language: en
+midi: source.mid
+start: 149.05
+end: 208.05
+fade_out: 1.5
+priority: 5
+parts:
+- name: Lead
+  role: lead
+  body: female
+  color: pink
+  midi: source.mid
+  lyrics: karaoke
+  tone:
+    vibrato: 26
+    tension: 0.6
+    pressure: 9.8
+  channel: 3
+  octave: 0
+- name: Bass
+  instrument: bass
+  midi: source.mid
+  color: pink
+  gain: 0.8
+  channel: 0
+  program: 34
+- name: Piano
+  instrument: piano
+  midi: source.mid
+  color: green
+  gain: 0.6
+  channel: 1
+  program: 0
+  hidden: true
+- name: Piano
+  instrument: piano
+  midi: source.mid
+  color: red
+  gain: 0.6
+  channel: 2
+  program: 0
+- name: Strings
+  instrument: strings
+  midi: source.mid
+  color: violet
+  gain: 0.6
+  channel: 4
+  program: 52
+  hidden: true
+- name: Strings
+  instrument: strings
+  midi: source.mid
+  color: blue
+  gain: 0.6
+  channel: 6
+  program: 48
+- name: Drums
+  instrument: drums
+  midi: source.mid
+  color: white
+  gain: 0.8
+  channel: 9
