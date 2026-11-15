@@ -1,0 +1,2 @@
+== source.mid
+   0  © absdrakt ²°°²              notes 3293  lyrics    0  channels [0, 1, 2, 3, 4, 5, 6, 7, 9]  range 31-94  program 39

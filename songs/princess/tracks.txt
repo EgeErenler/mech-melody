@@ -1,0 +1,25 @@
+== source-2.mid
+   2  Syncapated ---> | -PrincessB notes   19  lyrics    0  channels [14]  range 41-48  program None
+   3  Clean(27)  ---> | ---for Car notes   30  lyrics    0  channels [1]  range 60-70  program 27
+   4  Steel&Nylon                  notes   44  lyrics    0  channels [2]  range 65-72  program 25
+   5  Muted Gt.  ---> | /\/\/@MeTa notes   31  lyrics    0  channels [3]  range 61-80  program 28
+   6  Chrch&Harp ---> | '94 Creati notes   22  lyrics    0  channels [4]  range 65-69  program 14
+   7  TwsTrumpet ---> | R.L.Stockh notes   24  lyrics    0  channels [5]  range 64-72  program 59
+   8  Her.Tennor ---> | zrl@akaMai notes   14  lyrics    0  channels [6]  range 60-69  program 65
+   9  Picked Bass                  notes   11  lyrics    0  channels [8]  range 41-45  program 34
+  10  Tublar #14  vv               notes   57  lyrics    0  channels [10]  range 73-87  program 14
+  11  Tublar #14  ^^               notes   57  lyrics    0  channels [11]  range 73-87  program 14
+  12  Germ (25-19-48)              notes   67  lyrics    0  channels [12]  range 61-72  program 25
+  13  Piano/Strings                notes   32  lyrics    0  channels [13, 14]  range 55-65  program 0
+  14  Germ Strings                 notes   31  lyrics    0  channels [14]  range 60-72  program 49
+  15  3part Marryment              notes   46  lyrics    0  channels [3, 14, 15]  range 76-84  program 3
+
+== source-3.mid
+   1  Drums                        notes 1631  lyrics    0  channels [9]  range 38-57  program 0
+   2  Gtr I                        notes 1609  lyrics    0  channels [1]  range 55-86  program 29
+   3  Bass                         notes  849  lyrics    0  channels [2]  range 40-62  program 33
+   4  Vocals                       notes  633  lyrics    0  channels [3]  range 64-81  program 16
+   5  Guitar II                    notes  629  lyrics    0  channels [4]  range 57-89  program 29
+
+== source.mid
+   1  Acoustic Grand Piano         notes  426  lyrics    0  channels [0]  range 47-86  program 0

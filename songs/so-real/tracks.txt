@@ -1,0 +1,27 @@
+== source-2.mid
+   1  track 1                      notes 2977  lyrics    0  channels [0, 1]  range 40-72  program 26
+   2  track 2                      notes 2918  lyrics    0  channels [2, 3]  range 40-72  program 27
+   3  track 3                      notes   13  lyrics    0  channels [4, 5]  range 52-66  program 26
+   4  track 4                      notes   17  lyrics    0  channels [6, 7]  range 40-57  program 30
+   5  track 5                      notes  822  lyrics    0  channels [8]  range 43-67  program 26
+
+== source.mid
+   1  MIDI MAN!A 3000!             notes  125  lyrics    0  channels [9]  range 69-84  program 0
+   2  midimania3k.terrashare.c     notes 1721  lyrics    0  channels [9]  range 36-57  program 0
+   3  om                           notes  450  lyrics    0  channels [1]  range 27-46  program 33
+   4  midimania3k@hotmail.com      notes  607  lyrics    0  channels [2]  range 43-84  program 0
+   5  (c) 2001 MM3K!               notes   21  lyrics    0  channels [2]  range 27-36  program 0
+   6  -                            notes  415  lyrics    0  channels [3]  range 58-72  program 75
+   7  --                           notes  307  lyrics    0  channels [4]  range 58-70  program 52
+   8  ---                          notes  238  lyrics    0  channels [5]  range 55-70  program 52
+   9  ----                         notes  115  lyrics    0  channels [6]  range 59-67  program 73
+  10  -----                        notes  270  lyrics    0  channels [7]  range 56-77  program 28
+  11  ------                       notes  107  lyrics    0  channels [8]  range 67-87  program 50
+  12  -------                      notes  244  lyrics    0  channels [8]  range 48-65  program 50
+  13  --------                     notes  100  lyrics    0  channels [10]  range 72-91  program 88
+  14  ---------                    notes  123  lyrics    0  channels [11]  range 24-43  program 62
+  15  ----------                   notes   21  lyrics    0  channels [12]  range 55-74  program 101
+  16  -----------                  notes   11  lyrics    0  channels [12]  range 32-50  program 101
+  17  Enjoy                        notes   36  lyrics    0  channels [13]  range 48-60  program 55
+  18  The                          notes   38  lyrics    0  channels [14]  range 58-70  program 53
+  19  MIDI                         notes    1  lyrics    0  channels [15]  range 70-70  program 119

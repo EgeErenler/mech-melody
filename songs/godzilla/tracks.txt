@@ -1,0 +1,17 @@
+== source-2.mid
+   1  O Guitar                     notes  539  lyrics    0  channels [0]  range 52-76  program 29
+   2  D Guitar                     notes 1500  lyrics    0  channels [1]  range 35-71  program 30
+   3  Bass A                       notes  346  lyrics    0  channels [2]  range 28-54  program 37
+   4  Synth                        notes  307  lyrics    0  channels [3]  range 66-81  program 81
+   5  drums                        notes  480  lyrics    0  channels [9]  range 36-42  program 0
+   6  drums                        notes  820  lyrics    0  channels [9]  range 40-57  program 0
+   7  Bass B                       notes  346  lyrics    0  channels [4]  range 28-54  program 35
+
+== source-3.mid
+   1  track 1                      notes 1277  lyrics    0  channels [0]  range 38-64  program 30
+   2  track 2                      notes  808  lyrics    0  channels [2, 3]  range 38-64  program 30
+   3  track 3                      notes 1875  lyrics    0  channels [9]  range 36-57  program 0
+   4  track 4                      notes  657  lyrics    0  channels [4]  range 26-34  program 33
+
+== source.mid
+   0  track 0                      notes 3704  lyrics    0  channels [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]  range 8-84  program 48

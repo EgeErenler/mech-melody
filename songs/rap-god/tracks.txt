@@ -1,0 +1,19 @@
+== source-2.mid
+   1  Rap God by Eminem            notes 1814  lyrics    0  channels [0]  range 43-62  program 0
+   2  Arranged by OfficialCQZ      notes  253  lyrics    0  channels [1]  range 31-46  program 38
+   3  track 3                      notes  794  lyrics    0  channels [2]  range 74-86  program 81
+   4  track 4                      notes    9  lyrics    0  channels [3]  range 60-60  program 119
+   5  track 5                      notes  142  lyrics    0  channels [4]  range 55-75  program 81
+   6  track 6                      notes    8  lyrics    0  channels [5]  range 51-59  program 81
+   7  Heavy D & The Boyz (CarSFX)  notes    2  lyrics    0  channels [6]  range 55-58  program 81
+   8  track 8                      notes 1284  lyrics    0  channels [9]  range 35-69  program 25
+
+== source.mid
+   1  Rap God by Eminem            notes 1814  lyrics    0  channels [0]  range 43-62  program 0
+   2  Arranged by OfficialCQZ      notes  253  lyrics    0  channels [1]  range 31-46  program 38
+   3  track 3                      notes  794  lyrics    0  channels [2]  range 74-86  program 81
+   4  track 4                      notes    9  lyrics    0  channels [3]  range 60-60  program 119
+   5  track 5                      notes  142  lyrics    0  channels [4]  range 55-75  program 81
+   6  track 6                      notes    8  lyrics    0  channels [5]  range 51-59  program 81
+   7  Heavy D & The Boyz (CarSFX)  notes    2  lyrics    0  channels [6]  range 55-58  program 81
+   8  track 8                      notes 1284  lyrics    0  channels [9]  range 35-69  program 25

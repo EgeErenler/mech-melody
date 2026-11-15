@@ -1,0 +1,15 @@
+== source.mid
+   0      WAKA WAKA                notes    0  lyrics   65  channels []  range 0-0  program None
+   2  Words                        notes    0  lyrics  325  channels []  range 0-0  program None
+   3  FngrBass                     notes  257  lyrics    0  channels [0]  range 26-57  program 33
+   4  SteelGtr                     notes  240  lyrics    0  channels [1]  range 62-83  program 25
+   5  BariSax                      notes    8  lyrics    0  channels [2]  range 38-41  program 67
+   6  Ensmble2                     notes   45  lyrics    0  channels [3]  range 74-81  program 49
+   7  SynStrg1                     notes   35  lyrics    0  channels [4]  range 55-74  program 50
+   8  AahChoir                     notes  264  lyrics    0  channels [5]  range 43-69  program 52
+   9  NylonGtr                     notes  102  lyrics    0  channels [6]  range 55-69  program 24
+  10  RockOrgn                     notes   48  lyrics    0  channels [7]  range 62-74  program 18
+  11  SawLd                        notes   56  lyrics    0  channels [8]  range 62-74  program 81
+  12  GM Drums                     notes 1981  lyrics    0  channels [9]  range 36-87  program 0
+  13  AahChoir                     notes   39  lyrics    0  channels [14]  range 62-67  program 52
+  14  SynBass2                     notes   92  lyrics    0  channels [15]  range 21-38  program 39

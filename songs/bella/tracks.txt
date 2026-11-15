@@ -1,0 +1,31 @@
+== source-2.mid
+   0  track 0                      notes  489  lyrics    0  channels [0]  range 57-102  program 0
+   1  track 1                      notes  329  lyrics    0  channels [0]  range 33-64  program None
+
+== source-3.mid
+   2  Words                        notes    0  lyrics  239  channels []  range 0-0  program None
+   3  Bass                         notes  238  lyrics    0  channels [1]  range 31-44  program 32
+   4  Nylon gt                     notes  758  lyrics    0  channels [2]  range 43-67  program 24
+   5  Melody                       notes  269  lyrics    0  channels [3]  range 0-72  program 26
+   6  Accordeo                     notes  871  lyrics    0  channels [4]  range 48-92  program 21
+   7  Accordeo                     notes  617  lyrics    0  channels [5]  range 53-80  program 21
+   8  Trumpet                      notes   40  lyrics    0  channels [6]  range 67-80  program 56
+   9  Drums                        notes 1216  lyrics    0  channels [9]  range 35-54  program 0
+
+== source.mid
+   1  MIDI                         notes  840  lyrics    0  channels [0]  range 42-72  program 1
+   2  MIDI                         notes  235  lyrics    0  channels [1]  range 58-87  program 49
+   3  MIDI                         notes   88  lyrics    0  channels [2]  range 56-75  program 68
+   4  MIDI                         notes   88  lyrics    0  channels [3]  range 56-75  program 49
+   5  MIDI                         notes  220  lyrics    0  channels [4]  range 52-71  program 24
+   6  MIDI                         notes  110  lyrics    0  channels [5]  range 54-68  program 52
+   7  MIDI                         notes  100  lyrics    0  channels [6]  range 61-75  program 95
+   8  MIDI                         notes  179  lyrics    0  channels [7]  range 52-84  program 29
+   9  MIDI                         notes  292  lyrics    0  channels [8]  range 27-39  program 39
+  10  MIDI                         notes  530  lyrics    0  channels [9]  range 36-82  program 0
+  11  MIDI                         notes  240  lyrics    0  channels [10]  range 44-84  program 29
+  12  MIDI                         notes  182  lyrics    0  channels [11]  range 66-66  program 76
+  13  MIDI                         notes   16  lyrics    0  channels [12]  range 75-88  program 103
+  14  MIDI                         notes   11  lyrics    0  channels [13]  range 71-83  program 89
+  15  MIDI                         notes   27  lyrics    0  channels [14]  range 56-73  program 24
+  16  MIDI                         notes   12  lyrics    0  channels [15]  range 61-80  program 30

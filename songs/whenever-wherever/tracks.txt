@@ -1,0 +1,19 @@
+== source-2.mid
+   0  WHENEVER                     notes 8040  lyrics  501  channels [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]  range 25-85  program 33
+
+== source.mid
+   1  Sequenced                    notes   72  lyrics    0  channels [0]  range 42-71  program 29
+   2  By                           notes  204  lyrics    0  channels [1]  range 42-64  program 30
+   3  Scott                        notes  220  lyrics    0  channels [2]  range 59-83  program 75
+   4  Elliott                      notes   32  lyrics    0  channels [3]  range 47-54  program 75
+   5  Whenever                     notes  402  lyrics    0  channels [4]  range 28-40  program 35
+   6  Wherever                     notes 1571  lyrics    0  channels [5]  range 57-83  program 25
+   7  Shakira                      notes  156  lyrics    0  channels [6]  range 44-56  program 25
+   8  If you like this email       notes  471  lyrics    0  channels [7]  range 33-33  program 117
+   9  me on                        notes  205  lyrics    0  channels [8]  range 57-81  program 51
+  10  Scott200974638@aol           notes   16  lyrics    0  channels [12]  range 35-56  program 51
+  11  Thank                        notes  457  lyrics    0  channels [10]  range 63-85  program 52
+  12  You                          notes 1704  lyrics    0  channels [9]  range 60-69  program None
+  13  *********                    notes 1189  lyrics    0  channels [9]  range 35-49  program None
+  14  *(*(*)(*((((                 notes   35  lyrics    0  channels [11]  range 42-52  program 27
+  15  £!%^$()                      notes   35  lyrics    0  channels [13]  range 42-52  program 53

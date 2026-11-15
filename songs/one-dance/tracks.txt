@@ -1,0 +1,14 @@
+== source-2.mid
+   1  MELODY                       notes  484  lyrics    0  channels [0]  range 67-79  program 0
+   2  SYNBASS 1                    notes  829  lyrics    0  channels [1]  range 31-48  program 38
+   3  TENOR SAX                    notes   40  lyrics    0  channels [2]  range 48-72  program 66
+   4  BRASS 1                      notes  274  lyrics    0  channels [3]  range 77-86  program 61
+   5  CHOIR AAHS                   notes   90  lyrics    0  channels [4]  range 55-74  program 52
+   6  SYN STR 1                    notes  161  lyrics    0  channels [5]  range 52-65  program 50
+   7  CLEAN GTR                    notes 1141  lyrics    0  channels [6]  range 52-67  program 27
+   8  GLOCKENSPL                   notes   40  lyrics    0  channels [7]  range 72-77  program 9
+   9  E.PIANO 2                    notes  402  lyrics    0  channels [8]  range 60-89  program 5
+  10  DRUMS                        notes 3870  lyrics    0  channels [9]  range 0-80  program 0
+
+== source.mid
+   0  One dance                    notes 3349  lyrics    0  channels [1, 2, 3, 4, 5, 6, 7, 9]  range 29-77  program 10
