@@ -1,6 +1,7 @@
 # for `python3 -m mech listen` (hearing a recording); install torch from the CPU index first:
-#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#   pip install torch==2.5.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cpu
 demucs==4.0.1
+soundfile>=0.12
 faster-whisper>=1.1
 librosa>=0.10
 onnxruntime>=1.18
