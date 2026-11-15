@@ -19,7 +19,7 @@ parts:
     tension: 0.56
     pressure: 9.8
   channel: 0
-  octave: 0
+  octave: -1
 - name: Guitar
   instrument: guitar
   midi: source.mid

@@ -317,6 +317,10 @@ def align(lines: list[dict], notes: list[N], language: str) -> tuple[list[N], li
             while len(assigned) < len(group):  # more notes than syllables: the last one runs on
                 assigned.append(lang.melisma_of(assigned[-1]))
             last_word = wi == len(line["words"]) - 1
+            # one phrase per lyric line: a word on its own (lang.syllables) comes back as a whole
+            # phrase, and a phrase end after every word made the singer breathe between words
+            for s in assigned:
+                s["phraseEnd"] = False
             if last_word:
                 assigned[-1]["phraseEnd"] = True
             for s in assigned:

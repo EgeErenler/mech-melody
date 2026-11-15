@@ -41,6 +41,7 @@ jobs:
       - run: |
           mech/ci/setup-tools.sh
           mech/ci/setup-listen.sh
+      - run: python3 -m mech.tests.check_align
       - run: python3 -m mech build frere-jacques
       - run: python3 -m mech listen public/shows/frere-jacques/mix.wav heard-check --title "Frère Jacques" --artist Traditional --lang fr --arrangement acapella
       - run: cat songs/heard-check/song.yaml && python3 -c "import json; s=json.load(open('songs/heard-check/lead.syllables.json')); print(len(s), ' '.join(x['text'] for x in s[:40]))"

@@ -68,7 +68,10 @@ def arrange(slug: str, title: str, artist: str, voice: str = "male", length: flo
     else:
         raise SystemExit(f"{slug}: no words found in {', '.join(p.name for p in sources)}; it needs a karaoke MIDI or lyrics")
     med = float(np.median([n.pitch for n in mnotes]))
-    lead["octave"] = -1 if (voice == "male" and med > 69) or (voice == "female" and med > 80) else (1 if (voice == "male" and med < 47) or (voice == "female" and med < 57) else 0)
+    # the octave that puts the tune where that voice sings it full, not thin: a melody track is
+    # often written an octave up (A4 for a male voice strains into falsetto at every climax)
+    target = 60 if voice == "male" else 65  # C4 / F4 medians
+    lead["octave"] = max(-2, min(2, round((target - med) / 12)))
     parts.append(lead)
     # every other part, by channel (type-0 files) or track
     others = []

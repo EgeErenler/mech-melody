@@ -19,7 +19,7 @@ parts:
     tension: 0.6
     pressure: 9.8
   channel: 3
-  octave: 0
+  octave: -1
 - name: Bass
   instrument: bass
   midi: source.mid

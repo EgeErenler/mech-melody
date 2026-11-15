@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
-from scipy.signal import butter, fftconvolve, sosfilt
+from scipy.signal import butter, fftconvolve, lfilter, sosfilt
 
 from . import instruments, lang, midi
 from .paths import CHIMERA, SHOWS, SONGS
@@ -243,6 +243,37 @@ def _presence(x: np.ndarray) -> np.ndarray:
     return (hp + 0.35 * band).astype(np.float32)
 
 
+def _make_room_for(band: np.ndarray, lead: np.ndarray) -> np.ndarray:
+    """The band steps aside for the words: a 3 dB dip around 2.5 kHz (where consonants are heard)
+    and up to 4 dB less level while the lead sings, eased in 30 ms and out 250 ms. At the loud
+    choruses the band otherwise covered the lead and the words got lost."""
+    b, a = _peaking(2500.0, -3.0, 0.9)
+    band = lfilter(b, a, band, axis=0).astype(np.float32)
+    env = np.abs(lead).max(axis=1)
+    hop = int(0.01 * FS)
+    frames = np.sqrt(np.add.reduceat(env.astype(np.float64) ** 2, np.arange(0, len(env), hop)) / hop)
+    on = frames > 0.25 * (np.percentile(frames[frames > 1e-5], 90) if np.any(frames > 1e-5) else 1.0)
+    duck = np.where(on, 10 ** (-4 / 20), 1.0)
+    out = np.empty_like(duck)
+    g = 1.0
+    for i, d in enumerate(duck):  # fast attack, slow release
+        k = 1 - np.exp(-1 / (3 if d < g else 25))
+        g += (d - g) * k
+        out[i] = g
+    gain = np.repeat(out, hop)[: len(band)].astype(np.float32)
+    return band * gain[:, None]
+
+
+def _peaking(f0: float, gain_db: float, q: float):
+    """RBJ peaking EQ coefficients."""
+    A = 10 ** (gain_db / 40)
+    w = 2 * np.pi * f0 / FS
+    al = np.sin(w) / (2 * q)
+    b = np.array([1 + al * A, -2 * np.cos(w), 1 - al * A])
+    a = np.array([1 + al / A, -2 * np.cos(w), 1 - al / A])
+    return b / a[0], a / a[0]
+
+
 def _master(x: np.ndarray) -> np.ndarray:
     """Bus glue (a slow 2:1 compressor), a little air above 10 kHz, then a peak limiter at -1 dBFS.
     Loudness (-14 LUFS for Instagram) is set when the video is encoded."""
@@ -406,6 +437,8 @@ def build(slug: str, translate=None) -> dict:
             x = sosfilt(butter(2, 6000 / (FS / 2), output="sos"), x, axis=0).astype(np.float32)
         if g == "lead":
             x = _presence(x)
+        if g == "inst":
+            x = _make_room_for(x, groups["lead"])
         mix += (1 - wet[g] * 0.5) * x + wet[g] * _room(x)
     mix = _master(mix)
     # a clip cut from the middle of a song: a quick fade in, a gentle fade out at the end
