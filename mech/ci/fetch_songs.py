@@ -82,6 +82,24 @@ def search_midi(title: str, artist: str, want: int = 3) -> list[str]:
                 time.sleep(1)
     except Exception as e:
         print(f"  bitmidi search failed: {e}")
+    # more free, user-made MIDI archives
+    for search, link, file in (
+        (f"https://www.midiworld.com/search/?q={q}", r'href="(https://www\.midiworld\.com/download/\d+)"[^>]*>([^<]*)', None),
+        (f"https://onlinesequencer.net/sequences?search={urllib.parse.quote(title)}", r'href="/(\d{4,})"[^>]*>([^<]*)', "https://onlinesequencer.net/app/midi.php?id={}"),
+        (f"https://www.mididb.com/search/?q={q}", r'href="(/[^"]+\.mid)"[^>]*>([^<]*)', "https://www.mididb.com{}"),
+    ):
+        if len(found) >= want:
+            break
+        time.sleep(2)
+        try:
+            html = get(opener(), search).decode("utf-8", "replace")
+            for href, name in re.findall(link, html)[:200]:
+                words = set(_norm(href + " " + name))
+                # user sequences often carry the title only: then the whole title must be there
+                if all(w in words for w in tw) and (any(w in words for w in aw) or len(tw) >= 2):
+                    found.append((sum(w in words for w in aw), file.format(href) if file else href))
+        except Exception as e:
+            print(f"  {search.split('/')[2]} search failed: {e}")
     found.sort(key=lambda x: -x[0])
     return [u for _, u in found[:want]]
 
