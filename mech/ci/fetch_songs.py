@@ -57,7 +57,7 @@ def _norm(x: str) -> list[str]:
 
 def search_midi(title: str, artist: str, want: int = 3) -> list[str]:
     """No URLs given: look the song up on freemidi.org and bitmidi.com. A link counts when it
-    names every word of the title (and, on freemidi, the artist's page agrees)."""
+    names every word of the title and at least one of the artist's."""
     tw, aw = _norm(title), _norm(artist)
     found: list[tuple[int, str]] = []
     q = urllib.parse.quote(f"{title} {artist}")
@@ -65,7 +65,7 @@ def search_midi(title: str, artist: str, want: int = 3) -> list[str]:
         html = get(opener(), f"https://freemidi.org/search?q={urllib.parse.quote(title)}").decode("utf-8", "replace")
         for href, name in re.findall(r'href="?(download3-\d+-[^"\s>]+)"?[^>]*>([^<]*)<', html):
             words = set(_norm(href + " " + name))
-            if all(w in words for w in tw):
+            if all(w in words for w in tw) and any(w in words for w in aw):  # "the hills" alone matched Led Zeppelin
                 found.append((sum(w in words for w in aw), "https://freemidi.org/" + href))
     except Exception as e:
         print(f"  freemidi search failed: {e}")
@@ -74,7 +74,7 @@ def search_midi(title: str, artist: str, want: int = 3) -> list[str]:
         html = get(opener(), f"https://bitmidi.com/search?q={q}").decode("utf-8", "replace")
         for href in dict.fromkeys(re.findall(r'href="(/[a-z0-9-]+-mid)"', html)):
             words = set(_norm(href))
-            if all(w in words for w in tw):
+            if all(w in words for w in tw) and any(w in words for w in aw):
                 page = get(opener(), "https://bitmidi.com" + href).decode("utf-8", "replace")
                 up = re.search(r'(/uploads/\d+\.mid)', page)
                 if up:
