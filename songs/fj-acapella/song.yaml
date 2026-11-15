@@ -1,0 +1,128 @@
+title: Frère Jacques
+artist: Traditional
+language: fr
+midi: arrangement.mid
+arrangement: acapella
+bpm: 107.7
+start: 0
+end: 62.83
+parts:
+- name: Lead
+  track: Lead vocal
+  body: female
+  role: lead
+  syllables: lead.syllables.json
+  octave: 0
+  tone:
+    vibrato: 18.0
+    tension: 0.485
+    pressure: 9.5
+  lines:
+  - Frè|re Jac|que, frè|re Jac|que,
+  - Dor|mez vous? Dor|mez vous?
+  - Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+  - Ding, dang, dong. Ding, dang, dong.
+  - Frè|re Jac|que, frè|re Jac|que,
+  - Dor|mez vous? Dor|mez vous?
+  - Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+  - Ding, dang, dong. Ding, dang, dong.
+  - Frè|re Jac|que, frè|re Jac|que,
+  - Dor|mez vous? Dor|mez vous?
+  - Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+  - Ding, dang, dong. Ding, dang, dong.
+- name: Backing 1
+  track: Backing vocal 1
+  body: female
+  role: backing
+  lyrics: 'echo: Lead'
+  octave: 0
+  gain: 0.6
+  tone:
+    vibrato: 10.799999999999999
+    tension: 0.5
+    pressure: 8.5
+- name: Backing 2
+  track: Backing vocal 2
+  body: male
+  role: backing
+  lyrics: 'echo: Lead'
+  octave: 0
+  gain: 0.6
+  tone:
+    vibrato: 10.799999999999999
+    tension: 0.5
+    pressure: 8.5
+- name: Backing 3
+  track: Backing vocal 3
+  body: male
+  role: backing
+  lyrics: 'echo: Lead'
+  octave: 0
+  gain: 0.6
+  tone:
+    vibrato: 10.799999999999999
+    tension: 0.5
+    pressure: 8.5
+- name: Vocal bass
+  track: Vocal bass
+  body: male
+  role: bass
+  lyrics: 'vocalise: dum'
+  octave: 0
+  gain: 0.9
+  tone:
+    vibrato: 0
+    tension: 0.5
+    pressure: 10
+- name: Choir low
+  track: Choir low
+  body: male
+  role: choir
+  lyrics: 'vocalise: oo'
+  octave: 0
+  gain: 0.55
+  tone:
+    vibrato: 20
+    tension: 0.48
+    pressure: 8.5
+- name: Choir mid
+  track: Choir mid
+  body: female
+  role: choir
+  lyrics: 'vocalise: oo'
+  octave: 0
+  gain: 0.55
+  tone:
+    vibrato: 20
+    tension: 0.48
+    pressure: 8.5
+- name: Choir high
+  track: Choir high
+  body: female
+  role: choir
+  lyrics: 'vocalise: oo'
+  octave: 0
+  gain: 0.55
+  tone:
+    vibrato: 20
+    tension: 0.48
+    pressure: 8.5
+- name: Beatbox
+  track: Beatbox
+  body: male
+  role: beatbox
+  beatbox: true
+  gain: 0.9
+subtitles:
+- Brother John, Brother John,
+- Are you sleeping? Are you sleeping?
+- Ring the morning bells, ring the morning bells,
+- Ding, dang, dong. Ding, dang, dong.
+- Brother John, Brother John,
+- Are you sleeping? Are you sleeping?
+- Ring the morning bells, ring the morning bells,
+- Ding, dang, dong. Ding, dang, dong.
+- Brother John, Brother John,
+- Are you sleeping? Are you sleeping?
+- Ring the morning bells, ring the morning bells,
+- Ding, dang, dong. Ding, dang, dong.

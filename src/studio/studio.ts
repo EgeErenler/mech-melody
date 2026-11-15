@@ -393,7 +393,7 @@ export class Studio {
     if (!s) return;
     const c = this.ctx;
     const u = Math.min(1, (t - s.start) / 0.18, (s.end - t) / 0.18);
-    const y = 1590;
+    const y = 1655;
     c.save();
     c.globalAlpha = Math.max(0, u);
     c.font = `600 58px Archivo`;
