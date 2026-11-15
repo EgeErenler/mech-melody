@@ -148,6 +148,7 @@ class Member {
   private overlay: OverlayFn | undefined;
   private notes: [number, number, number, number][];
   private readonly rig: Rig;
+  private still: { target: THREE.Vector3; dir: THREE.Vector3; dist: number } | null = null;
 
   constructor(
     readonly part: StudioPart,
@@ -207,8 +208,17 @@ class Member {
       // the instrument alone: drawn first, then the camera fitted to what was drawn
       this.rig.fit(bounds.y0, bounds.k);
       this.rig.update({ t, dt, level: 0, notes: this.notes }, bounds.center);
-      const fr = this.rig.frameOnDrawing(w / hh, this.facing);
-      const off = fr.dir.clone().multiplyScalar(fr.dist).applyAxisAngle(new THREE.Vector3(0, 1, 0), sway);
+      // the instrument stands still: the camera is fitted once, to the instrument at rest, and never
+      // sways (only its playing parts move: strings, bow, sticks, beater, keys)
+      if (!this.still) {
+        // fitted to the instrument at rest (no note sounding), the same in every capture worker
+        this.rig.update({ t: -100, dt: 0, level: 0, notes: this.notes }, bounds.center);
+        const fr0 = this.rig.frameOnDrawing(w / hh, this.facing);
+        this.still = { ...fr0, dist: fr0.dist * 1.08 };
+        this.rig.update({ t, dt, level: 0, notes: this.notes }, bounds.center);
+      }
+      const fr = this.still;
+      const off = fr.dir.clone().multiplyScalar(fr.dist);
       r.camera.position.copy(fr.target).add(off);
       r.camera.lookAt(fr.target);
       const fog = r.scene.fog as THREE.Fog;

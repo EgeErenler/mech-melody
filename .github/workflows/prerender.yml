@@ -18,13 +18,17 @@ jobs:
     env: { GH_TOKEN: "${{ github.token }}" }
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - id: p
         run: |
           todo=()
           for s in $(python3 -c "import json; print(' '.join(x['slug'] for x in json.load(open('data/schedule.json'))))"); do
             posted=$(python3 -c "import json,sys; print(any(p['slug']=='$s' for p in json.load(open('data/published.json'))))")
             [ "$posted" = "True" ] && continue
-            if [ "${{ inputs.force }}" != "true" ] && gh release view "reel-$s" >/dev/null 2>&1; then continue; fi
+            # the commit that last changed anything this reel is made from; a release made from an older one is redone
+            rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py "songs/$s")
+            have=$(gh release view "reel-$s" --json body -q .body 2>/dev/null | sed -n 's/^rev: //p')
+            if [ "${{ inputs.force }}" != "true" ] && [ "$have" = "$rev" ]; then continue; fi
             todo+=("\"$s\"")
           done
           echo "slugs=[$(IFS=,; echo "${todo[*]}")]" >> "$GITHUB_OUTPUT"; echo "to render: ${todo[*]:-none}"
@@ -37,6 +41,7 @@ jobs:
     env: { ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}", GH_TOKEN: "${{ github.token }}", CHROME_PATH: /usr/bin/google-chrome }
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - uses: Swatinem/rust-cache@v2
@@ -49,4 +54,6 @@ jobs:
         run: |
           s="${{ matrix.slug }}"
           gh release delete "reel-$s" -y --cleanup-tag 2>/dev/null || true
-          gh release create "reel-$s" "out/$s/reel.mp4" "out/$s/cover.jpg" "out/$s/studio.json" --title "Reel: $s" --notes "Prerendered for Instagram." --latest=false
+          rev=$(git log -1 --format=%h -- src/studio src/ui/render src/show mech/build.py mech/instruments.py mech/render_video.ts mech/lang.py "songs/$s")
+          gh release create "reel-$s" "out/$s/reel.mp4" "out/$s/cover.jpg" "out/$s/studio.json" --title "Reel: $s" --notes "Prerendered for Instagram.
+          rev: $rev" --latest=false
