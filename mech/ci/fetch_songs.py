@@ -49,6 +49,43 @@ def fetch_midi(url: str) -> bytes:
     return data
 
 
+def _norm(x: str) -> list[str]:
+    import unicodedata
+    x = unicodedata.normalize("NFKD", x).encode("ascii", "ignore").decode().lower()
+    return [w for w in re.split(r"[^a-z0-9]+", x) if w and w not in ("the", "a", "feat", "ft")]
+
+
+def search_midi(title: str, artist: str, want: int = 3) -> list[str]:
+    """No URLs given: look the song up on freemidi.org and bitmidi.com. A link counts when it
+    names every word of the title (and, on freemidi, the artist's page agrees)."""
+    tw, aw = _norm(title), _norm(artist)
+    found: list[tuple[int, str]] = []
+    q = urllib.parse.quote(f"{title} {artist}")
+    try:
+        html = get(opener(), f"https://freemidi.org/search?q={urllib.parse.quote(title)}").decode("utf-8", "replace")
+        for href, name in re.findall(r'href="?(download3-\d+-[^"\s>]+)"?[^>]*>([^<]*)<', html):
+            words = set(_norm(href + " " + name))
+            if all(w in words for w in tw):
+                found.append((sum(w in words for w in aw), "https://freemidi.org/" + href))
+    except Exception as e:
+        print(f"  freemidi search failed: {e}")
+    time.sleep(2)
+    try:
+        html = get(opener(), f"https://bitmidi.com/search?q={q}").decode("utf-8", "replace")
+        for href in dict.fromkeys(re.findall(r'href="(/[a-z0-9-]+-mid)"', html)):
+            words = set(_norm(href))
+            if all(w in words for w in tw):
+                page = get(opener(), "https://bitmidi.com" + href).decode("utf-8", "replace")
+                up = re.search(r'(/uploads/\d+\.mid)', page)
+                if up:
+                    found.append((sum(w in words for w in aw), "https://bitmidi.com" + up.group(1)))
+                time.sleep(1)
+    except Exception as e:
+        print(f"  bitmidi search failed: {e}")
+    found.sort(key=lambda x: -x[0])
+    return [u for _, u in found[:want]]
+
+
 def has_words(mid: Path) -> int:
     import mido
     n = 0
@@ -79,7 +116,10 @@ def main() -> None:
         d = ROOT / "songs" / r["slug"]
         d.mkdir(parents=True, exist_ok=True)
         got = 0
-        for i, url in enumerate(r["midi"]):
+        if not r.get("midi") and not any(d.glob("source*.mid")):
+            r["midi"] = search_midi(r["title"], r["artist"])
+            print(f"{r['slug']}: search found {len(r['midi'])}: {r['midi']}")
+        for i, url in enumerate(r.get("midi") or []):
             out = d / ("source.mid" if i == 0 else f"source-{i + 1}.mid")
             if out.exists():
                 got += 1
