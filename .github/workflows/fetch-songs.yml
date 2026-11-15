@@ -1,0 +1,23 @@
+name: fetch songs
+# Free MIDI arrangements (and plain lyrics when a MIDI has no words) for requests/songs.json,
+# committed to songs/<slug>/ (private repo) for arranging.
+on:
+  push:
+    branches: [main]
+    paths: ["requests/songs.json", "mech/ci/fetch_songs.py"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q mido pyyaml
+      - run: python3 mech/ci/fetch_songs.py
+      - run: |
+          git config user.name "mech.melody bot"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add songs/ && git commit -qm "fetched song sources" && git pull -q --rebase && git push -q || echo "nothing new"

@@ -1,0 +1,22 @@
+[
+ {"slug": "blinding-lights", "title": "Blinding Lights", "artist": "The Weeknd",
+  "midi": ["https://freemidi.org/download3-26449-the-weeknd-blinding-lights-artists-bands"]},
+ {"slug": "die-with-a-smile", "title": "Die With A Smile", "artist": "Lady Gaga & Bruno Mars",
+  "midi": ["https://freemidi.org/download3-28809-die-with-a-smile-lady-gaga"]},
+ {"slug": "someone-like-you", "title": "Someone Like You", "artist": "Adele",
+  "midi": ["https://freemidi.org/download3-12738-someone-like-you-wit-lyric-adele", "https://freemidi.org/download3-12550-someone-like-you-adele", "https://freemidi.org/download3-12742-someone-like-you-adele"]},
+ {"slug": "nothing-else-matters", "title": "Nothing Else Matters", "artist": "Metallica",
+  "midi": ["https://bitmidi.com/uploads/73652.mid", "https://freemidi.org/download3-5100-nothing-else-matters-metallica", "https://bitmidi.com/uploads/73573.mid"]},
+ {"slug": "enter-sandman", "title": "Enter Sandman", "artist": "Metallica",
+  "midi": ["https://freemidi.org/download3-5099-enter-sandman-metallica", "https://freemidi.org/download3-18070-enter-sandman-2-metallica"]},
+ {"slug": "rolling-in-the-deep", "title": "Rolling in the Deep", "artist": "Adele",
+  "midi": ["https://freemidi.org/download3-12548-rolling-in-the-deep-adele"]},
+ {"slug": "viva-la-vida", "title": "Viva la Vida", "artist": "Coldplay",
+  "midi": ["https://bitmidi.com/uploads/24946.mid", "https://freemidi.org/download3-11651-viva-la-vida-coldplay"]},
+ {"slug": "uptown-funk", "title": "Uptown Funk", "artist": "Mark Ronson ft. Bruno Mars",
+  "midi": ["https://freemidi.org/download3-28790-uptown-funk-bruno-mars"]},
+ {"slug": "when-i-was-your-man", "title": "When I Was Your Man", "artist": "Bruno Mars",
+  "midi": ["https://freemidi.org/download3-25033-when-i-was-your-man-bruno-mars"]},
+ {"slug": "fix-you", "title": "Fix You", "artist": "Coldplay",
+  "midi": ["https://freemidi.org/download3-7105-fix-you-coldplay", "https://freemidi.org/download3-17690-fix-you-2-coldplay"]}
+]
