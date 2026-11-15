@@ -57,9 +57,33 @@ Repo → **Settings → Secrets and variables → Actions**:
 
 Sonra **Actions → publish a reel → Run workflow → dry_run: true** ile bir deneme yap. Video `reel` artifact'ı olarak iner. İyiyse aynı işi `dry_run` kapalı çalıştır.
 
-## 3. Şarkı ekleme
+## 3. Şarkıyı robotlara dinletme (en kolay yol)
 
-Her şarkı `songs/<kısa-ad>/` klasörüdür: bir MIDI dosyası ve bir `song.yaml`.
+GitHub'da **Actions → listen to a song → Run workflow** (telefonda GitHub uygulamasından da olur):
+
+| Alan | Ne yazılır |
+|---|---|
+| `audio_url` | Şarkının ses dosyasının linki. Google Drive'a yükle, "bağlantıya sahip herkes" yap, linki yapıştır |
+| `slug`, `title`, `artist` | Klasör adı (ör. `tarkan-simarik`), şarkı adı, sanatçı |
+| `start`, `end` | Şarkının hangi bölümü (saniye). 30-75 sn arası iyi bir Reel olur |
+| `arrangement` | `band`: robotlar enstrüman çalar. `acapella`: her şey sesle (vokal bas, koro, beatbox) |
+| `lang`, `voice` | Genelde `auto` bırak. Ses tipini kendin seçmek istersen `female` / `male` / `child` |
+| `post_now` | Açıksa video hemen paylaşılır. Kapalıysa önce `Artifacts` kısmından videoyu izlersin |
+
+Sistem şunları yapar:
+
+1. Şarkıyı kanallara ayırır: vokal, davul, bas, gitar, piyano, diğer (Demucs).
+2. Solistin melodisini çıkarır. Ses aralığına göre kadın, erkek ya da çocuk robot sesini seçer. Vibrato miktarını ve sesin parlaklığını da kopyalar.
+3. Sözleri zamanlarıyla yazıya döker (Whisper) ve her heceyi söylendiği notaya oturtur.
+4. Back vokalleri ayrı armoni sesleri olarak çıkarır.
+5. Her enstrümanın notalarını ve davul vuruşlarını (kick, snare, hi-hat, crash) çıkarır.
+6. `songs/<slug>/` içine `arrangement.mid` (herhangi bir müzik programında açılır), sözler ve `song.yaml` yazar. Video ve kapak artifact olarak iner.
+
+Sonuç %100 değildir. Özellikle güçlü back vokal ya da yoğun reverb varsa solist melodisi karışabilir. `song.yaml` ve `arrangement.mid` dosyalarını düzeltip `publish a reel` ile yeniden üretebilirsin.
+
+## 4. Şarkıyı elle ekleme (MIDI ile)
+
+Hazır bir MIDI'n varsa (özellikle karaoke `.kar`), dinletmeye gerek yok. Her şarkı `songs/<kısa-ad>/` klasörüdür: bir MIDI dosyası ve bir `song.yaml`.
 
 1. Şarkının MIDI'sini bul. Karaoke dosyaları (`.kar`) en iyisidir, çünkü sözler notalara zaten bağlıdır.
 2. İskeleti oluştur:
@@ -72,6 +96,9 @@ Her şarkı `songs/<kısa-ad>/` klasörüdür: bir MIDI dosyası ve bir `song.ya
    - `lyrics`: her satır bir müzikal cümle. `midi` yazarsan karaoke sözleri kullanılır. `from: Lead` başka bir sesin sözlerini alır. `vocalise: oo` sözsüz "uuu" söyletir.
    - `body`: `male`, `female`, `child`. `color`: `gold`, `blue`, `pink`, `green`, `violet`, `cyan`, `red`, `white`.
    - Enstrüman: `instrument: guitar | bass | piano | synth | strings | drums`.
+   - `role`: `lead` (büyük kadraj, mikrofon), `backing`, `choir`, `bass` (vokal bas), `beatbox` (`beatbox: true` ile davul notalarını ağızla çalar).
+   - `tone`: `vibrato` (cent), `tension` (0.42-0.72, yüksek = parlak ses), `pressure` (güç).
+   - `octave: 0` orijinal tonda söyletir. `auto` robotun rahat aralığına taşır.
    - `subtitles`: İngilizce altyazıyı kendin yazmak istersen. Yazmazsan Claude çevirir.
 4. Önizle:
    ```sh
