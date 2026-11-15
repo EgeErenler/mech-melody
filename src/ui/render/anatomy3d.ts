@@ -715,6 +715,12 @@ export class Anatomy3D {
     };
   }
 
+  /** the head's extent in its own frame (body cm): bottom of the neck, crown, middle, and scale */
+  bounds(model: VoiceModel): { y0: number; y1: number; center: THREE.Vector3; k: number } {
+    const r = this.restFor(model);
+    return { y0: r.head.y0, y1: r.head.y1, center: r.center.clone(), k: model.tract.scale };
+  }
+
   private restFor(model: VoiceModel): Rest {
     if (!this.rest || this.rest.model !== model) this.rest = buildRest(model);
     return this.rest;

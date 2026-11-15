@@ -543,11 +543,12 @@ pub fn notes(ctx: &Ctx, a: &[String]) -> Result<(), String> {
     let beat = 60.0 / bpm;
     let mut v = HumanVoice::new(FS, b, 2);
     let first = raw.iter().find(|n| n[0] > 0.0).ok_or("no notes")?;
+    // a singer's voice colour: lung pressure (loudness, effort) and fold tension (brightness)
     v.set_source(&SourcePatch {
         f0: Some(midi_to_hz(first[0])),
         voiced: Some(true),
-        pressure: Some(9.0),
-        tension: Some(0.55),
+        pressure: Some(j["pressure"].as_f64().unwrap_or(9.0)),
+        tension: Some(j["tension"].as_f64().unwrap_or(0.55)),
         ..Default::default()
     });
     let (mut t, mut k, mut end) = (t0, 0usize, 0.0f64);
@@ -896,5 +897,58 @@ pub fn vowels(ctx: &Ctx, a: &[String]) -> Result<(), String> {
         );
     }
     ctx.write_wav(&wav_name(name), &out)?;
+    Ok(())
+}
+
+/// Timed beatbox hits on one voice, for a band's vocal percussionist:
+/// `render hits <in.json> <out> [male|female|child] [--tele voice.tele]`, where the JSON is
+/// `{"hits": [{"t": 1.25, "id": "B", "accent": 1.0, "len": 0.15, "note": 40}, ...]}` (t: when the
+/// hit sounds, s; id: a beat sound, `chimera render beatbox` lists them; note: midi, for "m").
+pub fn hits(ctx: &Ctx, a: &[String]) -> Result<(), String> {
+    let mut tele_out: Option<String> = None;
+    let mut rest = Vec::new();
+    let mut it = a.iter();
+    while let Some(x) = it.next() {
+        if x == "--tele" {
+            tele_out = Some(it.next().ok_or("--tele needs a file")?.clone());
+        } else {
+            rest.push(x.clone());
+        }
+    }
+    let a = &rest[..];
+    let input = a.first().ok_or("render hits <in.json> <out> [male|female|child] [--tele voice.tele]")?;
+    let out_name = wav_name(arg(a, 1, "out/hits"));
+    let body_name = arg(a, 2, "male");
+    let b = body(body_name)?;
+    let text = std::fs::read_to_string(input).map_err(|e| format!("{input}: {e}"))?;
+    let j: serde_json::Value = serde_json::from_str(&text).map_err(|e| format!("{input}: {e}"))?;
+    let list = j["hits"].as_array().ok_or("hits missing")?;
+    let mut v = HumanVoice::new(FS, b, 2);
+    v.set_articulation(&beat_ready(body_name.into()), None);
+    v.set_source(&SourcePatch { f0: Some(100.0), voiced: Some(true), pressure: Some(8.0), ..Default::default() });
+    v.set_gate(0.0);
+    let mut player = BeatPlayer::new();
+    player.body = body_name.into();
+    let mut gs = Vec::new();
+    let mut end = 0.0f64;
+    for h in list {
+        let id = h["id"].as_str().ok_or("a hit without an id")?;
+        let t = h["t"].as_f64().ok_or("a hit without a time")?;
+        let len = h["len"].as_f64().unwrap_or(0.15);
+        let mut step = BeatStep::new(id);
+        step.accent = h["accent"].as_f64();
+        step.note = h["note"].as_f64();
+        player.gestures(&step, t, len, &mut gs);
+        end = js_max(end, t + len);
+    }
+    v.schedule(&gs);
+    let n = js_round(FS * (end + 0.6)) as usize;
+    let mut out = vec![0f32; n];
+    let (_, rec) = render_tracked(&mut v, &mut out, false, tele_out.is_some())?;
+    ctx.write_wav(&out_name, &out)?;
+    println!("{out_name}: {} s, peak {}, {} hits", fixed(n as f64 / FS, 2), fixed(peak(&out), 3), list.len());
+    if let (Some(path), Some(r)) = (&tele_out, rec) {
+        std::fs::write(path, r.bytes(body_mix(body_name)?)).map_err(|e| format!("{path}: {e}"))?;
+    }
     Ok(())
 }

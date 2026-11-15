@@ -8,13 +8,14 @@
  */
 import * as THREE from "three";
 import { Anatomy3D } from "../ui/render/anatomy3d.ts";
-import { Glow, hfont, label, seg, beamPts } from "../ui/render/vector.ts";
+import { Glow, hfont, label, seg } from "../ui/render/vector.ts";
 import { getModel } from "../ui/useModel.ts";
 import { VoiceModel } from "../ui/analysis.ts";
 import { mouthWords } from "../ui/mouthWords.ts";
 import { TeleTrack } from "../show/tele.ts";
 import { sungWords, wordAt, type Melody } from "../show/words.ts";
 import { NEUTRAL } from "../wasm/engine.ts";
+import { Rig, type RigKind } from "./rig3d.ts";
 import type { ViewFlags } from "../ui/render/anatomy.ts";
 import type { OverlayFn } from "../ui/components/AnatomyView.tsx";
 import type { BodyMix } from "../ui/body.ts";
@@ -33,6 +34,8 @@ export interface StudioPart {
   role?: string;
   /** [start s, end s, midi, velocity] */
   notes?: [number, number, number, number][];
+  /** a beatboxer's hits: [time s, beat sound id] */
+  hits?: [number, string][];
 }
 
 export interface StudioShow {
@@ -58,30 +61,63 @@ interface Cell {
   headH: number;
 }
 
-/** where each part sits: singers first, the lead biggest */
-export function layout(n: number, top = 200, bottom = 1470): Cell[] {
+/** where each part sits: the lead big on top, the other voices in a row of busts, the band below */
+export function layout(parts: StudioPart[], top = 200, bottom = 1470): Cell[] {
+  const pad = 12;
+  const lead = parts.findIndex((p) => p.kind === "voice" && (p.role ?? "lead") === "lead");
+  const voices = parts.map((p, i) => i).filter((i) => i !== lead && parts[i].kind === "voice");
+  const band = parts.map((p, i) => i).filter((i) => parts[i].kind === "instrument");
+  const perV = voices.length <= 4 ? Math.max(1, voices.length) : Math.ceil(voices.length / Math.ceil(voices.length / 4));
+  const rowsV = voices.length ? Math.ceil(voices.length / perV) : 0;
+  const perB = band.length <= 3 ? Math.max(1, band.length) : band.length === 4 ? 2 : 3;
+  const rowsB = band.length ? Math.ceil(band.length / perB) : 0;
+  let hV = rowsV * (perV <= 2 ? 330 : 280);
+  let hB = rowsB * (perB <= 2 ? 400 : 340);
   const area = bottom - top;
-  const cells: Cell[] = [];
-  const pad = 14;
-  const grid = (rows: number[][], y0: number, hh: number) => {
-    rows.forEach((row, r) => {
-      const cw = W / row.length;
-      row.forEach((_, c) => cells.push({ x: c * cw + pad / 2, y: y0 + r * hh + pad / 2, w: cw - pad, h: hh - pad, headH: hh - pad }));
-    });
-  };
-  if (n <= 1) grid([[0]], top, area);
-  else if (n === 2) grid([[0], [1]], top, area / 2);
-  else if (n === 3) {
-    grid([[0]], top, area * 0.5);
-    grid([[1, 2]], top + area * 0.5, area * 0.5);
-  } else {
-    const rows: number[][] = [];
-    let k = 0;
-    if (n % 2 === 1) rows.push([k++]);
-    while (k < n) rows.push([k++, k++]);
-    grid(rows, top, area / rows.length);
+  let hL = lead >= 0 ? area - hV - hB : 0;
+  const minLead = lead >= 0 ? 430 : 0;
+  if (hL < minLead) {
+    const s = (area - minLead) / Math.max(1, hV + hB);
+    hV *= s;
+    hB *= s;
+    hL = minLead;
+  } else if (lead < 0) {
+    const s = area / Math.max(1, hV + hB);
+    hV *= s;
+    hB *= s;
   }
+  const cells: Cell[] = new Array(parts.length);
+  let y = top;
+  if (lead >= 0) {
+    cells[lead] = { x: pad / 2, y: y + pad / 2, w: W - pad, h: hL - pad, headH: hL - pad };
+    y += hL;
+  }
+  const rows = (ids: number[], per: number, total: number) => {
+    const n = Math.ceil(ids.length / per);
+    const rh = total / Math.max(1, n);
+    ids.forEach((id, i) => {
+      const r = Math.floor(i / per);
+      const inRow = Math.min(per, ids.length - r * per);
+      const cw = W / inRow;
+      const c = i % per;
+      cells[id] = { x: Math.round(c * cw + pad / 2), y: Math.round(y + r * rh + pad / 2), w: Math.round(cw - pad), h: Math.round(rh - pad), headH: Math.round(rh - pad) };
+    });
+    y += total;
+  };
+  if (voices.length) rows(voices, perV, hV);
+  if (band.length) rows(band, perB, hB);
   return cells;
+}
+
+const BEAT_WORD: Record<string, string> = { B: "BOOM", Pf: "PF", K: "KA", "^K": "K!", t: "TS", tss: "TSSS", kch: "KSHH", m: "MM", "!": "TOK", "P!": "POP" };
+
+function rigKind(p: StudioPart): RigKind {
+  if (p.kind === "instrument") return (p.instrument ?? "synth") as RigKind;
+  const role = p.role ?? "lead";
+  if (role === "lead") return "lead";
+  if (role === "beatbox") return "beatbox";
+  if (role === "choir" || role === "bass") return "choir";
+  return "singer";
 }
 
 /** a hex colour as rgba */
@@ -97,6 +133,7 @@ class Member {
   readonly ctx: CanvasRenderingContext2D;
   private overlay: OverlayFn | undefined;
   private notes: [number, number, number, number][];
+  private readonly rig: Rig;
 
   constructor(
     readonly part: StudioPart,
@@ -112,11 +149,21 @@ class Member {
     this.r.centred = true;
     this.r.facing = facing;
     this.notes = part.notes ?? [];
-    if (part.kind === "instrument") this.cell = { ...cell, headH: Math.round(cell.h * (cell.w > 700 ? 0.62 : 0.56)) };
+    this.rig = new Rig(rigKind(part), "#3487c4");
+    this.r.scene.add(this.rig.beams.group);
     this.canvas.width = this.cell.w;
     this.canvas.height = this.cell.h;
     this.ctx = this.canvas.getContext("2d")!;
-    if (melody && melody.syllables) {
+    if (part.hits?.length) {
+      const hits = part.hits;
+      this.overlay = mouthWords(() => {
+        const t = this.now();
+        let k = -1;
+        for (let i = 0; i < hits.length && hits[i][0] <= t; i++) k = i;
+        if (k < 0 || t - hits[k][0] > 0.22) return null;
+        return { key: k, text: BEAT_WORD[hits[k][1]] ?? hits[k][1].toUpperCase() };
+      }, part.color, facing);
+    } else if (melody && melody.syllables) {
       const words = sungWords(melody, melody.syllables);
       this.overlay = mouthWords(() => wordAt(words, this.now()), part.color, facing);
     }
@@ -141,15 +188,19 @@ class Member {
     const a = tele ? VoiceModel.articFromArray(tele.t.artic) : NEUTRAL;
     r.face.update(singing ? tele : null, dt);
     // the camera: the turned home view, swaying a little with the beat
-    const p = r.poses(this.model);
     const ph = this.beat(t);
-    const off = p.home.clone().sub(p.target);
-    const sway = (this.part.kind === "instrument" ? 0.09 : 0.05) * Math.sin(2 * Math.PI * (ph / 2 + (t * this.show.bpm) / 120));
-    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), sway + 0.03 * Math.sin(t * 0.37 + this.cell.x));
-    r.camera.position.copy(p.target).add(off);
-    r.camera.lookAt(p.target);
+    const bounds = r.bounds(this.model);
+    this.rig.fit(bounds.y0, bounds.k);
+    const fr = this.rig.framing(bounds.y1, this.facing, this.cell.w / this.cell.headH);
+    const off = fr.dir.clone().multiplyScalar(fr.dist);
+    const sway = (this.part.kind === "instrument" ? 0.07 : 0.05) * Math.sin(2 * Math.PI * (ph / 2 + (t * this.show.bpm) / 120));
+    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), sway + 0.04 * Math.sin(t * 0.37 + this.cell.x));
+    r.camera.position.copy(fr.target).add(off);
+    r.camera.lookAt(fr.target);
     const f = this.model.frame(a);
     r.update(this.model, f, a, singing ? tele : null, VIEW, dt);
+    const level = tele ? Math.min(1, Math.sqrt(tele.t.outRms) * 4) : 0;
+    this.rig.update({ t, dt, level, notes: this.notes.length ? this.notes : (this.part.hits ?? []).map(([ht]) => [ht, ht + 0.1, 36, 100] as [number, number, number, number]) }, bounds.center);
     const by = H - y - hh; // WebGL counts rows from the bottom
     gl.setViewport(x, by, w, hh);
     gl.setScissor(x, by, w, hh);
@@ -176,7 +227,6 @@ class Member {
     c.fillRect(0, 0, w, hh);
     c.globalCompositeOperation = "source-over";
     this.overlay?.(c, r.faceView(this.model, f, a), this.model, f, a, { w, h: hh, dt });
-    if (this.part.kind === "instrument") this.drawInstrument(t);
     // name plate
     const sub = this.part.kind === "instrument" ? (this.part.instrument ?? "").toUpperCase() : `${this.part.body.toUpperCase()} VOICE`;
     label(c, this.part.name.toUpperCase(), 18, 30, { size: 22, color: this.part.color, weight: "m", ls: 0.12 });
@@ -197,149 +247,7 @@ class Member {
     return out;
   }
 
-  /** notes struck in the last `win` seconds, with how long ago */
-  private struck(t: number, win: number): { n: [number, number, number, number]; age: number }[] {
-    const out = [];
-    for (const n of this.notes) {
-      if (n[0] > t) break;
-      if (t - n[0] < win) out.push({ n, age: t - n[0] });
-    }
-    return out;
-  }
 
-  private drawInstrument(t: number): void {
-    const c = this.ctx;
-    const col = this.part.color;
-    const x0 = 0, y0 = this.cell.headH - 20, w = this.cell.w, h = this.cell.h - this.cell.headH + 10;
-    const cx = x0 + w / 2, cy = y0 + h / 2;
-    const k = Math.min(w / 500, h / 260);
-    const kind = this.part.instrument;
-    if (kind === "guitar" || kind === "bass") {
-      const nStr = kind === "bass" ? 4 : 6;
-      const bodyR = 62 * k;
-      const len = Math.min((kind === "bass" ? 440 : 400) * k, w * 0.62);
-      const ang = -0.28;
-      // the neck points the way the head looks; the whole guitar centred in the cell
-      const ux = Math.cos(ang) * this.facing, uy = Math.sin(ang);
-      const bx = cx - ux * (len - bodyR) * 0.5, by = cy + 18 * k - uy * (len - bodyR) * 0.5;
-      const P = (s: number, q: number): [number, number] => [bx + ux * s - uy * q, by + uy * s + ux * q];
-      // body: two lobes and a waist
-      const outline: [number, number][] = [];
-      for (let i = 0; i <= 64; i++) {
-        const a = (i / 64) * Math.PI * 2;
-        const s = Math.cos(a) * bodyR * 1.25;
-        const lobe = s < 0 ? 1 : 0.8;
-        const waist = 1 - 0.18 * Math.exp(-((s / bodyR - 0.1) ** 2) * 8);
-        outline.push(P(s, Math.sin(a) * bodyR * lobe * waist));
-      }
-      beamPts(c, outline, col, 2, { close: true });
-      const hole = [];
-      for (let i = 0; i <= 32; i++) hole.push(P(Math.cos((i / 32) * 6.283) * 18 * k + 12 * k, Math.sin((i / 32) * 6.283) * 18 * k));
-      beamPts(c, hole as [number, number][], col, 1.2, { alpha: 0.7 });
-      // neck and headstock
-      const nw = (kind === "bass" ? 13 : 11) * k;
-      beamPts(c, [P(bodyR * 0.9, -nw), P(len, -nw), P(len + 40 * k, -nw * 1.4), P(len + 40 * k, nw * 1.4), P(len, nw), P(bodyR * 0.9, nw)], col, 1.6);
-      for (let f = 1; f < 12; f++) {
-        const s = bodyR * 0.9 + (len - bodyR * 0.9) * (1 - 1 / 2 ** (f / 6)) * 1.9;
-        if (s < len) seg(c, ...P(s, -nw), ...P(s, nw), col, 0.8, { alpha: 0.4 });
-      }
-      // strings: each vibrates when a note on it sounds
-      const act = this.active(t);
-      for (let i = 0; i < nStr; i++) {
-        const q = -nw * 0.8 + (i * 1.6 * nw) / (nStr - 1);
-        const hit = act.find((n) => Math.floor((n[2] % 24) / (24 / nStr)) === i) ?? (act.length > i ? act[i] : undefined);
-        const amp = hit ? 4.5 * k * Math.exp(-(t - hit[0]) * 3) : 0;
-        const pts: [number, number][] = [];
-        for (let s = 0; s <= 24; s++) {
-          const u = s / 24;
-          const wob = amp * Math.sin(Math.PI * u) * Math.sin(t * 90 + i * 1.7);
-          pts.push(P(-bodyR * 0.6 + (len + bodyR * 0.6) * u, q + wob));
-        }
-        beamPts(c, pts, col, hit ? 1.6 : 0.9, { alpha: hit ? 1 : 0.55, hot: !!hit });
-      }
-    } else if (kind === "piano" || kind === "synth") {
-      const keys = 21, kw = Math.min(40 * k, (w - 40) / keys), kh = 110 * k;
-      const left = cx - (keys * kw) / 2, top = cy - kh / 2;
-      const act = this.active(t);
-      const lit = new Set(act.map((n) => n[2]));
-      const white = [0, 2, 4, 5, 7, 9, 11];
-      const base = 48;
-      let wi = 0;
-      for (let m = base; wi < keys; m++) {
-        if (!white.includes(m % 12)) continue;
-        const on = [...lit].some((p) => p % 36 === m % 36 || p === m);
-        c.save();
-        c.fillStyle = rgba(col, on ? 0.55 : 0);
-        c.fillRect(left + wi * kw + 1, top + 1, kw - 2, kh - 2);
-        c.restore();
-        beamPts(c, [[left + wi * kw, top], [left + (wi + 1) * kw, top], [left + (wi + 1) * kw, top + kh], [left + wi * kw, top + kh]], col, 1.2, { close: true, alpha: on ? 1 : 0.6 });
-        if (white.includes((m + 1) % 12) === false && wi < keys - 1) {
-          const on2 = [...lit].some((p) => p % 36 === (m + 1) % 36);
-          c.save();
-          c.fillStyle = on2 ? rgba(col, 0.8) : "#000";
-          c.fillRect(left + (wi + 0.68) * kw, top, kw * 0.64, kh * 0.6);
-          c.restore();
-          beamPts(c, [[left + (wi + 0.68) * kw, top], [left + (wi + 1.32) * kw, top], [left + (wi + 1.32) * kw, top + kh * 0.6], [left + (wi + 0.68) * kw, top + kh * 0.6]], col, 1, { close: true, alpha: 0.8 });
-        }
-        wi++;
-      }
-      if (kind === "synth") label(c, "SYNTH", cx, top - 12 * k, { size: 14, color: col, align: "center", alpha: 0.7 });
-    } else if (kind === "strings") {
-      // a violin and its bow
-      const sx = cx - this.facing * 40 * k, sy = cy;
-      const outline: [number, number][] = [];
-      for (let i = 0; i <= 64; i++) {
-        const a = (i / 64) * Math.PI * 2;
-        const yy = Math.sin(a) * 70 * k;
-        const xx = Math.cos(a) * 34 * k * (1 - 0.25 * Math.exp(-((yy / (70 * k)) ** 2) * 10));
-        outline.push([sx + xx, sy + yy]);
-      }
-      beamPts(c, outline, col, 1.8, { close: true });
-      const act = this.active(t);
-      for (let i = 0; i < 4; i++) seg(c, sx - 9 * k + i * 6 * k, sy - 120 * k, sx - 9 * k + i * 6 * k, sy + 50 * k, col, act.length ? 1.2 : 0.8, { alpha: 0.7 });
-      const bowPos = act.length ? Math.sin(t * 2.4) * 60 * k : 0;
-      seg(c, sx - 130 * k + bowPos, sy + 18 * k, sx + 130 * k + bowPos, sy - 2 * k, col, 1.6, { hot: act.length > 0 });
-    } else {
-      // drums: kick, snare, hats, a tom and a crash; each flashes when it is hit
-      const hits = this.struck(t, 0.35);
-      const flash = (notes: number[]) => {
-        let e = 0;
-        for (const { n, age } of hits) if (notes.includes(n[2])) e = Math.max(e, (n[3] / 127) * Math.exp(-age * 9));
-        return e;
-      };
-      const ring = (x: number, y: number, rx: number, ry: number, e: number, fill = false) => {
-        const pts: [number, number][] = [];
-        for (let i = 0; i <= 40; i++) pts.push([x + Math.cos((i / 40) * 6.283) * rx * (1 + 0.05 * e), y + Math.sin((i / 40) * 6.283) * ry * (1 + 0.05 * e)]);
-        if (fill && e > 0.02) {
-          c.save();
-          c.fillStyle = rgba(col, 0.45 * e);
-          c.beginPath();
-          pts.forEach(([px, py], i) => (i ? c.lineTo(px, py) : c.moveTo(px, py)));
-          c.fill();
-          c.restore();
-        }
-        beamPts(c, pts, col, 1.4 + 1.6 * e, { close: true, alpha: 0.55 + 0.45 * e, hot: e > 0.3 });
-      };
-      const kick = flash([35, 36]);
-      ring(cx, cy + 25 * k, 70 * k, 70 * k, kick, true);
-      ring(cx, cy + 25 * k, 22 * k, 22 * k, kick);
-      const snare = flash([37, 38, 39, 40]);
-      ring(cx - 110 * k, cy - 10 * k, 46 * k, 14 * k, snare, true);
-      seg(c, cx - 110 * k, cy + 4 * k, cx - 110 * k, cy + 80 * k, col, 1, { alpha: 0.5 });
-      const tom = flash([41, 43, 45, 47, 48, 50]);
-      ring(cx + 30 * k, cy - 70 * k, 32 * k, 11 * k, tom, true);
-      const hat = flash([42, 44, 46]);
-      const hy = cy - 55 * k - hat * 5 * k;
-      ring(cx - 170 * k, hy, 44 * k, 7 * k, hat, true);
-      ring(cx - 170 * k, cy - 48 * k, 44 * k, 7 * k, hat * 0.6);
-      seg(c, cx - 170 * k, cy - 40 * k, cx - 170 * k, cy + 90 * k, col, 1, { alpha: 0.5 });
-      const crash = flash([49, 51, 52, 55, 57, 59]);
-      const tilt = crash * 0.25;
-      const cxr = cx + 150 * k, cyr = cy - 80 * k;
-      beamPts(c, [[cxr - 55 * k, cyr + 12 * k * (1 + tilt * 3)], [cxr + 55 * k, cyr - 12 * k * (1 + tilt * 3)]], col, 2 + 2 * crash, { hot: crash > 0.3, alpha: 0.6 + 0.4 * crash });
-      seg(c, cxr, cyr, cxr, cy + 90 * k, col, 1, { alpha: 0.5 });
-    }
-  }
 }
 
 export class Studio {
@@ -379,14 +287,14 @@ export class Studio {
     };
     const show = (await (await get("studio.json")).json()) as StudioShow;
     const s = new Studio(show, canvas);
-    const cells = layout(show.parts.length);
+    const cells = layout(show.parts);
     for (let i = 0; i < show.parts.length; i++) {
       const p = show.parts[i];
       const track = p.tele ? new TeleTrack(await (await get(p.tele)).arrayBuffer()) : null;
       const melody = p.melody ? ((await (await get(p.melody)).json()) as Melody) : null;
       const cell = cells[i];
       // heads in the left column look right, the right column looks left: towards each other
-      const facing: 1 | -1 = cell.x > W / 3 && cell.w < W * 0.7 ? -1 : 1;
+      const facing: 1 | -1 = cell.w < W * 0.7 && cell.x + cell.w / 2 > W / 2 + 10 ? -1 : 1;
       s.members.push(new Member(p, cell, track, melody, facing, show, () => s.t));
     }
     await document.fonts.load(hfont(40, "m"));

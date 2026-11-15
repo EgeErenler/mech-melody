@@ -1,0 +1,10 @@
+# for `python3 -m mech listen` (hearing a recording); install torch from the CPU index first:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+demucs==4.0.1
+faster-whisper>=1.1
+librosa>=0.10
+onnxruntime>=1.18
+pretty_midi>=0.2.10
+mir_eval>=0.7
+resampy>=0.4
+# basic-pitch is installed with --no-deps (its pins pull TensorFlow; we run its ONNX model)

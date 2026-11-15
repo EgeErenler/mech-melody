@@ -20,6 +20,7 @@ usage: chimera <command> [args] [--float]
   render text    <out> [\"English text.\"] [male|female|child]
   render song    [outdir] [male|female|child]
   render notes   <in.json> <out> [male|female|child] [--artic tracks.json] [--tele voice.tele]
+  render hits    <in.json> <out> [male|female|child] [--tele voice.tele]   timed beatbox hits
                  (melody file; midi <= 0 is a rest; --artic also writes the articulators at 100 Hz)
   render beatbox [outdir] [preset name | pattern] [male|female|child] [bpm] [bars]
   render creature [creatureId] [outdir]
@@ -104,6 +105,7 @@ fn run(args: Vec<String>) -> Result<(), String> {
                 "text" => render::text(&ctx, rest),
                 "song" => render::song(&ctx, rest),
                 "notes" => render::notes(&ctx, rest),
+                "hits" => render::hits(&ctx, rest),
                 "beatbox" => render::beatbox(&ctx, rest),
                 "creature" => render::creature(&ctx, rest),
                 "vowels" => render::vowels(&ctx, rest),

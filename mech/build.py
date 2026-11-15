@@ -8,6 +8,7 @@ writes public/shows/<slug>/: one .wav/.tele/.melody.json per singer, mix.wav, st
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import wave
@@ -132,6 +133,43 @@ def _midi_lyrics(spec: dict, part: dict, d: Path, notes: list, language: str) ->
     return lang.syllables(text, language)
 
 
+BEAT_OF = {36: "B", 35: "B", 38: "Pf", 40: "Pf", 37: "K", 39: "K", 42: "t", 44: "t", 46: "tss", 49: "kch", 57: "kch", 51: "t", 52: "kch", 55: "kch", 59: "t"}
+BEAT_RANK = {"B": 0, "Pf": 1, "K": 1, "kch": 2, "tss": 3, "t": 4}
+
+
+def _thin(hits: list[dict], gap: float = 0.07) -> list[dict]:
+    """One mouth can't make two sounds at once: of hits closer than `gap`, keep the most important."""
+    out: list[dict] = []
+    for h in sorted(hits, key=lambda h: h["t"]):
+        if out and h["t"] - out[-1]["t"] < gap:
+            if BEAT_RANK.get(h["id"], 5) < BEAT_RANK.get(out[-1]["id"], 5):
+                out[-1] = h
+            continue
+        out.append(h)
+    return out
+
+
+def _echo(notes: list, lead_notes: list, lead_syls: list[dict]) -> list[dict]:
+    """A backing singer's words: the lead's syllable when they start together, else "oo"."""
+    oo = lang.syllables("oo", "en")[0]
+    out = []
+    for n in notes:
+        hit = next((s for m, s in zip(lead_notes, lead_syls) if abs(m.start - n.start) < 0.1 and not s.get("melisma")), None)
+        s = dict(hit) if hit else dict(oo)
+        s.pop("melisma", None)
+        s["wordEnd"] = True
+        s["phraseEnd"] = False
+        s["line"] = -1
+        out.append(s)
+    return out
+
+
+def _engine(args: list[str], name: str) -> None:
+    r = subprocess.run([str(CHIMERA), *args], capture_output=True, text=True)
+    if r.returncode:
+        raise SystemExit(f"{name}: the engine refused it: {r.stderr or r.stdout}")
+
+
 def _write_wav(path: Path, x: np.ndarray, channels: int = 1) -> None:
     x = np.clip(x, -1, 1)
     with wave.open(str(path), "wb") as w:
@@ -178,6 +216,8 @@ def build(slug: str, translate=None) -> dict:
     out.mkdir(parents=True)
     parts = spec["parts"]
     lyrics_by_name: dict[str, str] = {p["name"]: p["lyrics"] for p in parts if isinstance(p.get("lyrics"), str) and p["lyrics"] not in ("midi",)}
+    # the lead goes first: backing singers echo its words
+    parts = sorted(parts, key=lambda p: 0 if p.get("role") == "lead" else 1)
     stems, show_parts, lead_timing = [], [], None
     for k, p in enumerate(parts):
         color = p.get("color", ORDER[k % len(ORDER)])
@@ -189,34 +229,59 @@ def build(slug: str, translate=None) -> dict:
         if "instrument" in p:
             kind = p["instrument"]
             audio = instruments.render(kind, notes, max(n.end for n in notes) + 2, seed=k + 1) * float(p.get("gain", 1.0))
+            _write_wav(out / f"i{k}.wav", audio)
             entry.update(kind="instrument", instrument=kind, notes=[[round(n.start, 3), round(n.end, 3), n.pitch, n.vel] for n in notes])
             stems.append((audio, float(p.get("pan", 0.0))))
             show_parts.append(entry)
             continue
         body = entry["body"]
-        notes = midi.monophonic(notes)
+        if p.get("beatbox"):
+            hits = [{"t": round(n.start, 4), "id": BEAT_OF.get(n.pitch, "Pf"), "accent": round(0.55 + 0.45 * n.vel / 127, 3), "len": 0.4 if BEAT_OF.get(n.pitch) in ("kch", "tss") else 0.15} for n in notes]
+            hits = _thin(hits)
+            stem = f"v{k}"
+            (out / f"{stem}.hits.json").write_text(json.dumps({"hits": hits}))
+            _engine(["render", "hits", str(out / f"{stem}.hits.json"), str(out / stem), body, "--tele", str(out / f"{stem}.tele")], p["name"])
+            audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0))
+            stems.append((audio, float(p.get("pan", 0.0))))
+            entry.update(kind="voice", tele=f"{stem}.tele", role="beatbox", hits=[[h["t"], h["id"]] for h in hits])
+            show_parts.append(entry)
+            continue
+        if p.get("syllables"):
+            syls = json.loads((d / p["syllables"]).read_text(encoding="utf-8"))
+            notes = sorted(notes, key=lambda n: n.start)
+            if len(syls) != len(notes):
+                rep.warn(f"{p['name']}: {len(syls)} syllables for {len(notes)} notes in the arrangement; the extra are dropped")
+                m = min(len(syls), len(notes))
+                syls, notes = syls[:m], notes[:m]
+        else:
+            notes = midi.monophonic(notes)
         if p.get("octave", "auto") == "auto":
             sh = _octave_fit(notes, body)
             notes = [midi.Note(n.start, n.end, n.pitch + sh, n.vel) for n in notes]
         else:
             notes = [midi.Note(n.start, n.end, n.pitch + 12 * int(p["octave"]), n.vel) for n in notes]
         lyr = p.get("lyrics", "")
-        if lyr == "midi":
+        if p.get("syllables"):
+            pass
+        elif lyr == "midi":
             syls = _midi_lyrics(spec, p, d, notes, language)
+        elif isinstance(lyr, str) and lyr.startswith("echo:") and lead_timing:
+            syls = _echo(notes, *lead_timing)
         elif isinstance(lyr, str) and lyr.startswith("from:"):
             syls = lang.syllables(lyrics_by_name[lyr[5:].strip()], language)
         elif isinstance(lyr, str) and lyr.startswith("vocalise:"):
             syls = lang.syllables(" ".join([lyr[9:].strip()] * len(notes)), "en")
         else:
             syls = lang.syllables(lyr, language)
-        syls = assign(notes, syls, rep, p["name"])
+        if not p.get("syllables"):
+            syls = assign(notes, syls, rep, p["name"])
         mel = _melody(notes, syls)
+        mel.update({k2: v for k2, v in (p.get("tone") or {}).items() if k2 in ("vibrato", "tension", "pressure")})
         stem = f"v{k}"
         (out / f"{stem}.melody.json").write_text(json.dumps(mel, ensure_ascii=False))
-        r = subprocess.run([str(CHIMERA), "render", "notes", str(out / f"{stem}.melody.json"), str(out / stem), body, "--tele", str(out / f"{stem}.tele")], capture_output=True, text=True)
-        if r.returncode:
-            raise SystemExit(f"{p['name']}: the engine refused the melody: {r.stderr or r.stdout}")
-        audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0))
+        _engine(["render", "notes", str(out / f"{stem}.melody.json"), str(out / stem), body, "--tele", str(out / f"{stem}.tele")], p["name"])
+        lift = 1.7 if p.get("role", "lead" if lead_timing is None else "backing") == "lead" else 1.0  # the lead sits on top of the mix
+        audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0)) * lift
         stems.append((audio, float(p.get("pan", 0.0))))
         entry.update(kind="voice", tele=f"{stem}.tele", melody=f"{stem}.melody.json", role=p.get("role", "lead" if lead_timing is None else "backing"))
         show_parts.append(entry)
@@ -238,7 +303,8 @@ def build(slug: str, translate=None) -> dict:
     subs = []
     if lead_timing:
         notes, syls = lead_timing
-        lines = lang.lyric_lines(next((p["lyrics"] for p in parts if isinstance(p.get("lyrics"), str) and p["lyrics"] not in ("midi",) and not p["lyrics"].startswith(("from:", "vocalise:"))), ""))
+        lead_part = next((p for p in parts if p.get("lines")), None)
+        lines = lead_part["lines"] if lead_part else lang.lyric_lines(next((p["lyrics"] for p in parts if isinstance(p.get("lyrics"), str) and p["lyrics"] not in ("midi",) and not p["lyrics"].startswith(("from:", "vocalise:", "echo:"))), ""))
         spans: dict[int, list[float]] = {}
         for nt, s in zip(notes, syls):
             li = s.get("line", -1)
@@ -258,7 +324,8 @@ def build(slug: str, translate=None) -> dict:
                 cache.write_text(json.dumps({"lines": lines, "english": english}, ensure_ascii=False, indent=1), encoding="utf-8")
         for li, (a, b) in sorted(spans.items()):
             if li < len(lines):
-                subs.append({"start": round(a - 0.15, 3), "end": round(b + 0.35, 3), "text": (english[li] if english and li < len(english) else lines[li]), "orig": lines[li]})
+                show_text = lambda x: " ".join(re.sub(r"[|_]", "", x).split())
+                subs.append({"start": round(a - 0.15, 3), "end": round(b + 0.35, 3), "text": show_text(english[li] if english and li < len(english) else lines[li]), "orig": show_text(lines[li])})
         for x, y in zip(subs, subs[1:]):  # never two on screen at once
             x["end"] = min(x["end"], y["start"])
     show = {
