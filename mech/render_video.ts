@@ -7,7 +7,7 @@
  * to ffmpeg with the show's mix. Writes out/<id>/reel.mp4 and out/<id>/cover.jpg.
  */
 import { chromium } from "playwright-core";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { cpus } from "node:os";
@@ -102,11 +102,19 @@ try {
   };
   await Promise.all(Array.from({ length: workers }, (_, w) => chunk(w)));
   const mp4 = resolve(outDir, "reel.mp4");
+  // loudness for Instagram: measure the mix, then normalise to -14 LUFS, -1 dBTP in one linear gain
+  const mixPath = resolve(root, "public/shows", id, "mix.wav");
+  const probe = spawnSync("ffmpeg", ["-hide_banner", "-t", String(seconds), "-i", mixPath, "-af", "loudnorm=I=-14:TP=-1:LRA=11:print_format=json", "-f", "null", "-"], { encoding: "utf8" });
+  const m = /\{[\s\S]*?\}/.exec(probe.stderr.slice(probe.stderr.lastIndexOf("[Parsed_loudnorm")));
+  const meas = m ? JSON.parse(m[0]) : null;
+  const norm = meas
+    ? `loudnorm=I=-14:TP=-1:LRA=11:measured_I=${meas.input_i}:measured_TP=${meas.input_tp}:measured_LRA=${meas.input_lra}:measured_thresh=${meas.input_thresh}:offset=${meas.target_offset}:linear=true`
+    : "loudnorm=I=-14:TP=-1:LRA=11";
   await new Promise<void>((ok, bad) => {
     const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(fps), "-start_number", "0", "-i", resolve(frameDir, "%06d.jpg"),
-      "-i", resolve(root, "public/shows", id, "mix.wav"), "-map", "0:v", "-map", "1:a", "-t", String(seconds),
+      "-i", mixPath, "-map", "0:v", "-map", "1:a", "-t", String(seconds), "-af", norm,
       "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", String(fps), "-fps_mode", "cfr",
-      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", mp4], { stdio: "inherit" });
+      "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", mp4], { stdio: "inherit" });
     ff.on("close", (c) => (c === 0 ? ok() : bad(new Error(`ffmpeg exited ${c}`))));
   });
   rmSync(frameDir, { recursive: true, force: true });

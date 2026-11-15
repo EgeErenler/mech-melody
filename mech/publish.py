@@ -52,7 +52,10 @@ def host(slug: str, files: list[Path]) -> dict[str, str]:
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not repo:
         raise RuntimeError("set MEDIA_BASE_URL, or run in GitHub Actions (a release hosts the files)")
-    tag = f"reel-{slug}-{state.now()[:10]}"
+    tag = f"reel-{slug}"
+    have = subprocess.run(["gh", "release", "view", tag, "--json", "assets", "-q", ".assets[].name"], capture_output=True, text=True)
+    if have.returncode == 0 and all(f.name in have.stdout.split() for f in files):
+        return {f.name: f"https://github.com/{repo}/releases/download/{tag}/{f.name}" for f in files}
     subprocess.run(["gh", "release", "create", tag, *map(str, files), "--title", f"Reel: {slug}", "--notes", "Media for an Instagram Reel (fetched by Instagram).", "--latest=false"], check=True)
     return {f.name: f"https://github.com/{repo}/releases/download/{tag}/{f.name}" for f in files}
 
@@ -70,8 +73,15 @@ def run(slug: str | None = None, dry: bool = False, fps: int = 30) -> dict | Non
         return None
     slug = spec["slug"]
     print(f"next: {slug} — {spec.get('title')} / {spec.get('artist')}")
-    show = build.build(slug, translate=claude.translate_lines)
-    video, cover = render(slug, fps)
+    video, cover = OUT / slug / "reel.mp4", OUT / slug / "cover.jpg"
+    pre = OUT / slug / "studio.json"
+    if video.exists() and cover.exists() and pre.exists():  # rendered ahead (the prerender workflow)
+        import json
+        show = json.loads(pre.read_text(encoding="utf-8"))
+        print(f"using the prerendered {video}")
+    else:
+        show = build.build(slug, translate=claude.translate_lines)
+        video, cover = render(slug, fps)
     entry = next((e for e in state.queue() if e["key"] in (spec.get("request"), state.key(spec.get("title", ""), spec.get("artist", ""))) and e["status"] != "published"), None)
     requested_by = entry["requested_by"][:5] if entry else []
     text = claude.caption(show, requested_by)

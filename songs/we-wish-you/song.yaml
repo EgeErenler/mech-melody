@@ -1,0 +1,60 @@
+# We Wish You a Merry Christmas — traditional English carol, public domain. Arranged for mech.melody.
+title: We Wish You a Merry Christmas
+artist: Traditional
+language: en
+midi: we-wish-you.mid
+bpm: 132
+priority: 20
+parts:
+  - name: Lead
+    track: Lead
+    role: lead
+    body: female
+    color: red
+    octave: 0
+    tone: { vibrato: 30, tension: 0.58, pressure: 9.6 }
+    lyrics: |
+      We wish you a merry Christmas,
+      We wish you a merry Christmas,
+      We wish you a merry Christmas
+      and a happy new year!
+      Good tidings we bring to you and your kin,
+      Good tidings for Christmas and a happy new year!
+      We wish you a merry Christmas,
+      We wish you a merry Christmas,
+      We wish you a merry Christmas
+      and a happy new year!
+      Good tidings we bring to you and your kin,
+      Good tidings for Christmas and a happy new year!
+      We wish you a merry Christmas,
+      We wish you a merry Christmas,
+      We wish you a merry Christmas
+      and a happy new year!
+  - name: Harmony
+    track: Harmony
+    role: backing
+    body: child
+    color: gold
+    octave: 0
+    lyrics: |
+      Good tidings we bring to you and your kin,
+      Good tidings for Christmas and a happy new year!
+      We wish you a merry Christmas,
+      We wish you a merry Christmas,
+      We wish you a merry Christmas
+      and a happy new year!
+    pan: -0.35
+    tone: { vibrato: 18, tension: 0.52, pressure: 8.8 }
+  - name: Choir
+    track: Choir
+    role: choir
+    body: male
+    color: green
+    octave: 0
+    lyrics: "vocalise: oo"
+    pan: 0.35
+    tone: { vibrato: 15, tension: 0.48, pressure: 8.5 }
+  - { name: Strings, track: Strings, instrument: strings, color: white, pan: 0.25, gain: 0.6 }
+  - { name: Piano, track: Piano, instrument: piano, color: cyan, pan: -0.2, gain: 0.8 }
+  - { name: Bass, track: Bass, instrument: bass, color: violet, gain: 0.9 }
+  - { name: Drums, track: Drums, instrument: drums, color: pink, gain: 0.6 }

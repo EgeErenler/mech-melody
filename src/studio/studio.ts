@@ -11,7 +11,7 @@ import { Anatomy3D } from "../ui/render/anatomy3d.ts";
 import { Glow, hfont, label, seg } from "../ui/render/vector.ts";
 import { getModel } from "../ui/useModel.ts";
 import { VoiceModel } from "../ui/analysis.ts";
-import { mouthWords } from "../ui/mouthWords.ts";
+import { studioWords as mouthWords } from "./words.ts";
 import { TeleTrack } from "../show/tele.ts";
 import { sungWords, wordAt, type Melody } from "../show/words.ts";
 import { NEUTRAL } from "../wasm/engine.ts";
@@ -28,7 +28,7 @@ export interface StudioPart {
   color: string;
   body: "male" | "female" | "child";
   kind: "voice" | "instrument";
-  instrument?: "guitar" | "bass" | "piano" | "synth" | "strings" | "drums";
+  instrument?: string;
   tele?: string;
   melody?: string;
   role?: string;
@@ -123,7 +123,10 @@ const BEAT_WORD: Record<string, string> = { B: "BOOM", Pf: "PF", K: "KA", "^K": 
 const isLead = (p: StudioPart) => p.kind === "voice" && (p.role ?? "lead") === "lead";
 
 function rigKind(p: StudioPart): RigKind {
-  if (p.kind === "instrument") return (p.instrument ?? "synth") as RigKind;
+  if (p.kind === "instrument") {
+    const look: Record<string, RigKind> = { bells: "piano", celesta: "piano", organ: "synth", pad: "synth", "electric-guitar": "guitar", harp: "strings", brass: "synth", flute: "synth", sax: "synth" };
+    return look[p.instrument ?? ""] ?? ((p.instrument ?? "synth") as RigKind);
+  }
   const role = p.role ?? "lead";
   if (role === "lead") return "lead";
   if (role === "beatbox") return "beatbox";

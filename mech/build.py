@@ -166,23 +166,24 @@ def _echo(notes: list, lead_notes: list, lead_syls: list[dict]) -> list[dict]:
 
 
 def _engine(args: list[str], name: str) -> None:
-    r = subprocess.run([str(CHIMERA), *args], capture_output=True, text=True)
+    r = subprocess.run([str(CHIMERA), *args, "--float"], capture_output=True, text=True)
     if r.returncode:
         raise SystemExit(f"{name}: the engine refused it: {r.stderr or r.stdout}")
 
 
 def _write_wav(path: Path, x: np.ndarray, channels: int = 1) -> None:
-    x = np.clip(x, -1, 1)
-    with wave.open(str(path), "wb") as w:
-        w.setnchannels(channels)
-        w.setsampwidth(2)
-        w.setframerate(FS)
-        w.writeframes((x * 32767).astype("<i2").tobytes())
+    """32-bit float WAV (no rounding to 16 bits until the final AAC)."""
+    import soundfile
+    x = np.asarray(x, np.float32)
+    if channels == 2 and x.ndim == 1:
+        x = x.reshape(-1, 2)
+    soundfile.write(str(path), x, FS, subtype="FLOAT")
 
 
 def _read_wav(path: Path) -> np.ndarray:
-    with wave.open(str(path), "rb") as w:
-        return np.frombuffer(w.readframes(w.getnframes()), "<i2").astype(np.float32) / 32767
+    import soundfile
+    y, _ = soundfile.read(str(path), dtype="float32")
+    return y
 
 
 def _melody(notes: list, syls: list[dict]) -> dict:
@@ -199,6 +200,38 @@ def _melody(notes: list, syls: list[dict]) -> dict:
             seq.append([0, round(gap, 4)])
     clean = [{k: v for k, v in s.items() if k != "line"} for s in syls]
     return {"bpm": 60, "t0": round(t0, 4), "vibrato": 30, "notes": seq, "syllables": clean, "lyrics": " ".join(s["text"] for s in syls)}
+
+
+def _presence(x: np.ndarray) -> np.ndarray:
+    """The lead's voice forward: a gentle lift around 3 kHz, the rumble below 90 Hz cut."""
+    hp = sosfilt(butter(2, 90 / (FS / 2), btype="high", output="sos"), x, axis=0)
+    band = sosfilt(butter(2, [2000 / (FS / 2), 5000 / (FS / 2)], btype="band", output="sos"), hp, axis=0)
+    return (hp + 0.35 * band).astype(np.float32)
+
+
+def _master(x: np.ndarray) -> np.ndarray:
+    """Bus glue (a slow 2:1 compressor), a little air above 10 kHz, then a peak limiter at -1 dBFS.
+    Loudness (-14 LUFS for Instagram) is set when the video is encoded."""
+    x = sosfilt(butter(2, 30 / (FS / 2), btype="high", output="sos"), x, axis=0)
+    air = sosfilt(butter(1, 10000 / (FS / 2), btype="high", output="sos"), x, axis=0)
+    x = x + 0.25 * air
+    # compressor on the RMS envelope (both channels linked)
+    env = np.sqrt(np.convolve(np.mean(x ** 2, axis=1), np.ones(int(0.05 * FS)) / int(0.05 * FS), mode="same") + 1e-12)
+    db = 20 * np.log10(env)
+    thr = float(np.percentile(db[db > -60], 75)) if np.any(db > -60) else -20.0
+    gain_db = np.where(db > thr, (thr - db) * 0.5, 0.0)
+    a = np.exp(-1 / (0.15 * FS))
+    from scipy.signal import lfilter
+    gain_db = lfilter([1 - a], [1, -a], gain_db)
+    x = x * (10 ** (gain_db / 20))[:, None]
+    # limiter: the gain each sample needs to stay under the ceiling, held and smoothed
+    ceiling = 10 ** (-1 / 20)
+    x = x / max(1e-9, float(np.percentile(np.abs(x), 99.95))) * ceiling * 0.9
+    need = np.minimum(1.0, ceiling / np.maximum(np.abs(x).max(axis=1), 1e-9))
+    from scipy.ndimage import minimum_filter1d
+    need = minimum_filter1d(need, int(0.005 * FS))
+    need = np.convolve(need, np.ones(int(0.004 * FS)) / int(0.004 * FS), mode="same")
+    return (x * need[:, None]).astype(np.float32)
 
 
 def _room(x: np.ndarray, seconds: float = 1.6) -> np.ndarray:
@@ -243,7 +276,11 @@ def build(slug: str, translate=None) -> dict:
             continue
         if "instrument" in p:
             kind = p["instrument"]
-            audio = instruments.render(kind, notes, max(n.end for n in notes) + 2, seed=k + 1) * float(p.get("gain", 1.0))
+            length = max(n.end for n in notes) + 2
+            audio = None if p.get("synth") else instruments.render_sampled(kind, notes, length)
+            if audio is None:
+                audio = instruments.render(kind if kind in instruments.KINDS else "piano", notes, length, seed=k + 1)
+            audio = audio * float(p.get("gain", 1.0))
             _write_wav(out / f"i{k}.wav", audio)
             group = "inst"
             entry.update(kind="instrument", instrument=kind, notes=[[round(n.start, 3), round(n.end, 3), n.pitch, n.vel] for n in notes])
@@ -291,6 +328,9 @@ def build(slug: str, translate=None) -> dict:
             syls = lang.syllables(lyr, language)
         if not p.get("syllables"):
             syls = assign(notes, syls, rep, p["name"])
+        spell = {k.lower(): v for k, v in (spec.get("spell") or {}).items()}
+        if spell:  # words spelled for the pronouncing dictionary, shown as they are written
+            syls = [dict(x, text=spell.get(x["text"].lower(), x["text"])) for x in syls]
         mel = _melody(notes, syls)
         mel.update({k2: v for k2, v in (p.get("tone") or {}).items() if k2 in ("vibrato", "tension", "pressure")})
         stem = f"v{k}"
@@ -309,11 +349,15 @@ def build(slug: str, translate=None) -> dict:
     n = max(len(a) for a, _, _ in stems)
     groups = {g: np.zeros((n, 2), np.float32) for g in ("lead", "voices", "inst")}
     for a, pan, g in stems:
-        act = a[np.abs(a) > 1e-4]
+        act = a[np.abs(a) > 1e-4] if a.ndim == 1 else a[np.abs(a).max(axis=1) > 1e-4]
         a = a / max(1e-6, float(np.sqrt(np.mean(act ** 2))) if len(act) else 1.0)
-        groups[g][: len(a)] += _pan(a, pan)
+        if a.ndim == 2:  # a stereo instrument: keep its own image, pan as balance
+            bal = np.array([min(1.0, 1 - pan), min(1.0, 1 + pan)], np.float32)
+            groups[g][: len(a)] += a[:, :2] * bal
+        else:
+            groups[g][: len(a)] += _pan(a, pan)
     level = {"lead": 0.2, "inst": 0.2 * 10 ** (-6 / 20), "voices": 0.2 * 10 ** (-11 / 20)}
-    wet = {"lead": 0.12, "inst": 0.15, "voices": 0.38}
+    wet = {"lead": 0.12, "inst": 0.08, "voices": 0.38}
     mix = np.zeros((n, 2), np.float32)
     for g, x in groups.items():
         act = x[np.abs(x).max(axis=1) > 1e-4]
@@ -322,9 +366,10 @@ def build(slug: str, translate=None) -> dict:
         x = x * (level[g] / float(np.sqrt(np.mean(act ** 2))))
         if g == "voices":
             x = sosfilt(butter(2, 6000 / (FS / 2), output="sos"), x, axis=0).astype(np.float32)
+        if g == "lead":
+            x = _presence(x)
         mix += (1 - wet[g] * 0.5) * x + wet[g] * _room(x)
-    mix /= max(1.0, float(np.abs(mix).max()) / 0.95)
-    mix = np.tanh(mix * 1.3) / np.tanh(1.3)
+    mix = _master(mix)
     # a clip cut from the middle of a song: a quick fade in, a gentle fade out at the end
     if spec.get("fade_out"):
         end_s = min(n, int((float(spec.get("end", n / FS)) - float(spec.get("start", 0)) + LEAD_IN) * FS))
@@ -361,7 +406,8 @@ def build(slug: str, translate=None) -> dict:
                 cache.write_text(json.dumps({"lines": lines, "english": english}, ensure_ascii=False, indent=1), encoding="utf-8")
         for li, (a, b) in sorted(spans.items()):
             if li < len(lines):
-                show_text = lambda x: " ".join(re.sub(r"[|_]", "", x).split())
+                respell = {k.lower(): v for k, v in (spec.get("spell") or {}).items()}
+                show_text = lambda x: " ".join(respell.get(w.lower().strip(",.!?;:'"), None) and re.sub(r"[A-Za-z']+", respell[w.lower().strip(",.!?;:'")], w) or w for w in re.sub(r"[|_]", "", x).split())
                 subs.append({"start": round(a - 0.15, 3), "end": round(b + 0.35, 3), "text": show_text(english[li] if english and li < len(english) else lines[li]), "orig": show_text(lines[li])})
         for x, y in zip(subs, subs[1:]):  # never two on screen at once
             x["end"] = min(x["end"], y["start"])

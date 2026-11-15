@@ -32,12 +32,8 @@ jobs:
         with: { python-version: "3.11", cache: pip, cache-dependency-path: "mech/requirements*.txt" }
       - name: tools
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q espeak-ng ffmpeg
-          pip install -q -r mech/requirements.txt
+          mech/ci/setup-tools.sh
           mech/ci/setup-listen.sh
-          bun install --frozen-lockfile
-          bun run wasm
-          cargo build --release -p chimera-cli
       - name: hear, arrange, film
         env: { REQ: "${{ steps.which.outputs.file }}" }
         run: |

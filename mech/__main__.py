@@ -9,6 +9,8 @@
   python3 -m mech syllables <lang> "<lyrics>"         how the robots will read a line
   python3 -m mech build <slug>                        render the band's audio (public/shows/<slug>)
   python3 -m mech video <slug> [--seconds N]          build + the Reel and cover (out/<slug>)
+  python3 -m mech prerender <slug>                    build + film ahead of time (out/<slug>)
+  python3 -m mech due                                 the scheduled song whose time has come, if any
   python3 -m mech next                                which song goes out next
   python3 -m mech publish [<slug>] [--dry-run]        build, render, caption, post to Instagram
   python3 -m mech comments [--dry-run]                reply to new comments, queue requests
@@ -130,6 +132,18 @@ def main(argv: list[str]) -> None:
     elif cmd == "comments":
         from . import comments
         comments.run(dry=_flag(args, "--dry-run"))
+    elif cmd == "due":
+        from . import schedule
+        print(schedule.due() or "")
+    elif cmd == "prerender":
+        # build, film and keep the reel, cover and show for a later post
+        from . import build, claude, publish
+        import shutil
+        from .paths import OUT, SHOWS
+        slug = args[0]
+        build.build(slug, translate=claude.translate_lines)
+        publish.render(slug, int(_opt(args, "--fps", 30)))
+        shutil.copy(SHOWS / slug / "studio.json", OUT / slug / "studio.json")
     elif cmd == "queue":
         from . import publish
         print(publish.queue_report())

@@ -1,0 +1,46 @@
+# Jingle Bells — James Lord Pierpont (1857), public domain. Arranged for mech.melody.
+title: Jingle Bells
+artist: James Lord Pierpont (1857)
+language: en
+midi: jingle-bells.mid
+bpm: 148
+priority: 30
+parts:
+  - name: Lead
+    track: Lead
+    role: lead
+    body: female
+    color: gold
+    octave: 0
+    tone: { vibrato: 28, tension: 0.6, pressure: 9.8 }
+    lyrics: |
+      Jingle bells, jingle bells, jingle all the way!
+      Oh, what fun it is to ride in a one horse open sleigh, hey!
+      Jingle bells, jingle bells, jingle all the way!
+      Oh, what fun it is to ride in a one horse open sleigh!
+      Jingle bells, jingle bells, jingle all the way!
+      Oh, what fun it is to ride in a one horse open sleigh, hey!
+      Jingle bells, jingle bells, jingle all the way!
+      Oh, what fun it is to ride in a one horse open sleigh!
+  - name: Harmony
+    track: Harmony
+    role: backing
+    body: child
+    color: red
+    octave: 0
+    lyrics: "from: Lead"
+    pan: -0.35
+    tone: { vibrato: 18, tension: 0.52, pressure: 8.8 }
+  - name: Choir
+    track: Choir
+    role: choir
+    body: male
+    color: green
+    octave: 0
+    lyrics: "vocalise: oo"
+    pan: 0.35
+    tone: { vibrato: 15, tension: 0.48, pressure: 8.5 }
+  - { name: Bells, track: Bells, instrument: bells, color: white, pan: 0.3, gain: 0.55 }
+  - { name: Piano, track: Piano, instrument: piano, color: cyan, pan: -0.2, gain: 0.8 }
+  - { name: Bass, track: Bass, instrument: bass, color: violet, gain: 0.9 }
+  - { name: Drums, track: Drums, instrument: drums, color: pink, gain: 0.8 }

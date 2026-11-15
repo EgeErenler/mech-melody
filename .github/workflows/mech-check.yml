@@ -19,11 +19,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip, cache-dependency-path: mech/requirements.txt }
       - run: |
-          sudo apt-get update -q && sudo apt-get install -y -q espeak-ng ffmpeg
-          pip install -q -r mech/requirements.txt
-          bun install --frozen-lockfile
-          bun run wasm
-          cargo build --release -p chimera-cli
+          mech/ci/setup-tools.sh
       - run: bunx tsc --noEmit
       - run: python3 -m mech syllables tr "Anlamadım, anlamadım" && python3 -m mech syllables es "Corazón, baila conmigo"
       - run: python3 -m mech video frere-jacques --seconds 8
@@ -43,12 +39,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11", cache: pip, cache-dependency-path: "mech/requirements*.txt" }
       - run: |
-          sudo apt-get update -q && sudo apt-get install -y -q espeak-ng ffmpeg
-          pip install -q -r mech/requirements.txt
+          mech/ci/setup-tools.sh
           mech/ci/setup-listen.sh
-          bun install --frozen-lockfile
-          bun run wasm
-          cargo build --release -p chimera-cli
       - run: python3 -m mech build frere-jacques
       - run: python3 -m mech listen public/shows/frere-jacques/mix.wav heard-check --title "Frère Jacques" --artist Traditional --lang fr --arrangement acapella
       - run: cat songs/heard-check/song.yaml && python3 -c "import json; s=json.load(open('songs/heard-check/lead.syllables.json')); print(len(s), ' '.join(x['text'] for x in s[:40]))"

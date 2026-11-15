@@ -1,0 +1,78 @@
+# Deck the Halls — Welsh melody, English words by Thomas Oliphant (1862), public domain. Arranged for mech.melody.
+title: Deck the Halls
+artist: Traditional
+language: en
+midi: deck-the-halls.mid
+bpm: 138
+priority: 10
+spell: { owr: our }
+parts:
+  - name: Lead
+    track: Lead
+    role: lead
+    body: female
+    color: green
+    octave: 0
+    tone: { vibrato: 26, tension: 0.6, pressure: 9.8 }
+    lyrics: |
+      Deck the halls with boughs of holly,
+      'Tis the season to be jolly,
+      Don we now owr gay apparel,
+      Troll the ancient Yuletide carol,
+      See the blazing Yule before us,
+      Strike the harp and join the chorus,
+      Follow me in merry measure,
+      While I tell of Yuletide treasure,
+  - name: Choir high
+    track: Choir high
+    role: choir
+    body: child
+    color: gold
+    octave: 0
+    pan: -0.4
+    tone: { vibrato: 15, tension: 0.55, pressure: 9 }
+    lyrics: |
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+  - name: Choir mid
+    track: Choir mid
+    role: choir
+    body: female
+    color: red
+    octave: 0
+    tone: { vibrato: 15, tension: 0.52, pressure: 9 }
+    lyrics: |
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+  - name: Choir low
+    track: Choir low
+    role: choir
+    body: male
+    color: white
+    octave: 0
+    pan: 0.4
+    tone: { vibrato: 15, tension: 0.5, pressure: 9 }
+    lyrics: |
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+      Fa la la la la, la la la la!
+  - { name: Piano, track: Piano, instrument: piano, color: cyan, pan: -0.2, gain: 0.8 }
+  - { name: Bass, track: Bass, instrument: bass, color: violet, gain: 0.9 }
+  - { name: Drums, track: Drums, instrument: drums, color: pink, gain: 0.75 }

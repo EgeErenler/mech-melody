@@ -149,3 +149,70 @@ def render(kind: str, notes, length: float, seed: int = 1) -> np.ndarray:
         j = min(len(out), i + len(y))
         out[i:j] += y[: j - i]
     return out[: int(length * FS)]
+
+
+# ------------------------------------------------------------------ sampled instruments (studio quality)
+# A General MIDI SoundFont played by FluidSynth: real recorded instruments, stereo, 48 kHz. The
+# MuseScore General SoundFont (MIT) is used when installed, else FluidR3; without FluidSynth the
+# synthesized instruments above stand in.
+import os as _os
+import shutil as _shutil
+import subprocess as _sp
+import tempfile as _tmp
+
+SOUNDFONTS = [
+    _os.environ.get("MECH_SOUNDFONT", ""),
+    "/usr/share/sounds/sf2/MuseScore_General_Full.sf2",
+    "/usr/share/sounds/sf3/MuseScore_General.sf3",
+    "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+]
+# kind -> (GM program, gain); drums play on channel 10
+GM = {
+    "piano": (0, 1.0), "guitar": (25, 1.0), "electric-guitar": (27, 1.0), "bass": (33, 1.2), "synth": (81, 0.7),
+    "strings": (48, 0.9), "pad": (89, 0.8), "bells": (9, 0.8), "celesta": (8, 0.9), "organ": (19, 0.8),
+    "brass": (61, 0.8), "flute": (73, 0.9), "sax": (65, 0.9), "harp": (46, 0.9), "drums": (0, 1.0),
+}
+
+
+def soundfont() -> str | None:
+    for p in SOUNDFONTS:
+        if p and _os.path.exists(p):
+            return p
+    return None
+
+
+def render_sampled(kind: str, notes, length: float) -> "np.ndarray | None":
+    """Stereo float32 (n, 2) from the SoundFont, or None when FluidSynth or a SoundFont is missing."""
+    sf = soundfont()
+    if not sf or not _shutil.which("fluidsynth"):
+        return None
+    import mido
+    import soundfile
+    prog, gain = GM.get(kind, (0, 1.0))
+    ch = 9 if kind == "drums" else 0
+    mid = mido.MidiFile(ticks_per_beat=1000)
+    tr = mido.MidiTrack()
+    tr.append(mido.MetaMessage("set_tempo", tempo=1_000_000, time=0))  # 1 tick = 1 ms
+    tr.append(mido.Message("program_change", program=prog, channel=ch, time=0))
+    tr.append(mido.Message("control_change", control=91, value=40, channel=ch, time=0))  # a little room
+    ev = []
+    for n in notes:
+        a, b = int(n.start * 1000), max(int(n.start * 1000) + 30, int(n.end * 1000))
+        ev.append((a, 1, n.pitch, max(1, min(127, n.vel))))
+        ev.append((b, 0, n.pitch, 0))
+    ev.sort(key=lambda e: (e[0], e[1]))
+    now = 0
+    for t, on, p, v in ev:
+        tr.append(mido.Message("note_on" if on else "note_off", note=p, velocity=v if on else 0, channel=ch, time=t - now))
+        now = t
+    mid.tracks.append(tr)
+    with _tmp.TemporaryDirectory() as d:
+        mp, wp = _os.path.join(d, "p.mid"), _os.path.join(d, "p.wav")
+        mid.save(mp)
+        _sp.run(["fluidsynth", "-ni", "-q", "-g", "0.7", "-r", str(FS), "-o", "synth.reverb.active=1", "-o", "synth.chorus.active=0",
+                 "-T", "wav", "-O", "float", "-F", wp, sf, mp], check=True, capture_output=True)
+        y, sr = soundfile.read(wp, dtype="float32", always_2d=True)
+    out = np.zeros((int(length * FS), 2), np.float32)
+    m = min(len(out), len(y))
+    out[:m] = y[:m, :2] * gain
+    return out
