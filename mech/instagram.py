@@ -119,7 +119,8 @@ def reply(comment_id: str, message: str) -> dict:
 
 
 def me() -> dict:
-    return call("GET", "me", {"fields": "user_id,username,id"})
+    """Our own account (works on both hosts: the IG user node, not /me, which is the Facebook user there)."""
+    return call("GET", user_id(), {"fields": "id,username"})
 
 
 def refresh_token() -> str:
