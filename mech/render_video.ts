@@ -69,47 +69,47 @@ try {
   await page.reload();
   await page.waitForFunction(() => window.studio, null, { timeout: 180000 });
 
-  // frames in parallel chunks: each page warms its faces up on the second before its chunk
+  // frames in parallel chunks, each written as a numbered JPEG; then ONE encode of all of them
+  // with the mix, so picture and sound share one clock (joining separately encoded pieces can
+  // shift the sound by a frame or two at each join)
   const workers = Math.max(1, Number(process.env.RENDER_WORKERS ?? Math.floor(cpus().length / 2)));
   const per = Math.ceil(frames / workers);
+  const frameDir = resolve(outDir, "frames");
+  rmSync(frameDir, { recursive: true, force: true });
+  mkdirSync(frameDir, { recursive: true });
   const t0 = Date.now();
   let doneFrames = 0;
-  const chunk = async (w: number): Promise<string> => {
+  const chunk = async (w: number): Promise<void> => {
     const a = w * per, b = Math.min(frames, a + per);
+    if (a >= b) return;
     const p = w === 0 ? page : await browser.newPage({ viewport: { width: 1100, height: 1950 } });
     if (w > 0) {
       p.on("pageerror", (e) => console.error("page:", e.message));
       await p.goto(`${base}/studio.html?id=${encodeURIComponent(id)}&capture=1&fps=${fps}`);
       await p.waitForFunction(() => window.studio, null, { timeout: 180000 });
     }
-    const seg = resolve(outDir, `part${w}.mp4`);
-    const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-c:v", "mjpeg", "-framerate", String(fps), "-i", "-",
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", String(fps), seg], { stdio: ["pipe", "inherit", "inherit"] });
-    const closed = new Promise<void>((ok, bad) => ff.on("close", (c) => (c === 0 ? ok() : bad(new Error(`ffmpeg exited ${c}`)))));
+    // warm the faces up on the second before this chunk (their motion carries over frames)
     const warm = Math.max(0, a - fps);
     if (a > 0) await p.evaluate(([from, to]) => { for (let k = from; k < to; k++) window.studio!.frame(k); }, [warm, a]);
     for (let i = a; i < b; i++) {
       const jpg = await p.evaluate((k) => {
         window.studio!.frame(k);
-        return window.studio!.jpeg(0.9);
+        return window.studio!.jpeg(0.92);
       }, i);
-      if (!ff.stdin!.write(Buffer.from(jpg.split(",")[1], "base64"))) await new Promise((r) => ff.stdin!.once("drain", r));
+      writeFileSync(resolve(frameDir, `${String(i).padStart(6, "0")}.jpg`), Buffer.from(jpg.split(",")[1], "base64"));
       if (++doneFrames % (fps * 5) === 0) console.log(`frame ${doneFrames}/${frames}  ${(doneFrames / ((Date.now() - t0) / 1000)).toFixed(2)} fps`);
     }
-    ff.stdin!.end();
-    await closed;
-    return seg;
   };
-  const segs = await Promise.all(Array.from({ length: workers }, (_, w) => chunk(w)));
-  const list = resolve(outDir, "parts.txt");
-  writeFileSync(list, segs.map((x) => `file '${x}'`).join("\n"));
+  await Promise.all(Array.from({ length: workers }, (_, w) => chunk(w)));
   const mp4 = resolve(outDir, "reel.mp4");
   await new Promise<void>((ok, bad) => {
-    const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list, "-i", resolve(root, "public/shows", id, "mix.wav"),
-      "-t", String(seconds), "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", "-shortest", mp4], { stdio: "inherit" });
-    ff.on("close", (c) => (c === 0 ? ok() : bad(new Error(`ffmpeg concat exited ${c}`))));
+    const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(fps), "-start_number", "0", "-i", resolve(frameDir, "%06d.jpg"),
+      "-i", resolve(root, "public/shows", id, "mix.wav"), "-map", "0:v", "-map", "1:a", "-t", String(seconds),
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", String(fps), "-fps_mode", "cfr",
+      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart", mp4], { stdio: "inherit" });
+    ff.on("close", (c) => (c === 0 ? ok() : bad(new Error(`ffmpeg exited ${c}`))));
   });
-  for (const x of [...segs, list]) rmSync(x, { force: true });
+  rmSync(frameDir, { recursive: true, force: true });
   await browser.close();
   console.log(`wrote ${mp4} and cover.jpg (${frames} frames in ${((Date.now() - t0) / 1000).toFixed(0)} s)`);
 } finally {

@@ -61,8 +61,26 @@ export class Rig {
   private bow = 0;
   private fretZ = 0;
   private handsKeys: [number, number] = [0, 0];
+  /** the instrument alone, no robot holding it (the studio's look); arms and torso are skipped */
+  bodyless = true;
+  /** what was drawn last frame, for framing the camera on it */
+  readonly lo: P3 = [Infinity, Infinity, Infinity];
+  readonly hi: P3 = [-Infinity, -Infinity, -Infinity];
 
   constructor(readonly kind: RigKind, private readonly color: string) {}
+
+  /** the camera on last frame's drawing: its middle, and the distance that fits it in the pane */
+  frameOnDrawing(aspect: number, facing: 1 | -1, az = 1.2, el = 0.28, fovDeg = 24): { target: THREE.Vector3; dir: THREE.Vector3; dist: number } {
+    const c = new THREE.Vector3((this.lo[0] + this.hi[0]) / 2, (this.lo[1] + this.hi[1]) / 2, (this.lo[2] + this.hi[2]) / 2);
+    const size = new THREE.Vector3(this.hi[0] - this.lo[0], this.hi[1] - this.lo[1], this.hi[2] - this.lo[2]);
+    const dir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), facing * Math.cos(az) * Math.cos(el));
+    // the extent seen across and up the screen, roughly
+    const across = Math.hypot(size.z * Math.sin(az), size.x * Math.cos(az));
+    const up = size.y * Math.cos(el) + Math.max(size.x, size.z) * Math.sin(el) * 0.5;
+    const half = Math.tan((fovDeg * Math.PI) / 360);
+    const dist = 0.98 * Math.max(up / 2 / half, across / 2 / (half * aspect)) + Math.max(size.x, size.z) * 0.25;
+    return { target: c, dir, dist };
+  }
 
   /** the head's extent (from Anatomy3D.bounds) */
   fit(y0: number, k: number): void {
@@ -105,6 +123,11 @@ export class Rig {
       this.flat[3 * i] = pts[i][0];
       this.flat[3 * i + 1] = pts[i][1];
       this.flat[3 * i + 2] = pts[i][2];
+      if (!this.measuring) continue;
+      for (let j = 0; j < 3; j++) {
+        if (pts[i][j] < this.lo[j]) this.lo[j] = pts[i][j];
+        if (pts[i][j] > this.hi[j]) this.hi[j] = pts[i][j];
+      }
     }
     this.beams.line(this.flat, n, color, w, { alpha, close, hot });
   }
@@ -174,7 +197,10 @@ export class Rig {
     return [elbow, t];
   }
 
+  private measuring = true;
+
   private arm(side: 1 | -1, hand: P3, grip: P3 | null, color: string): void {
+    if (this.bodyless) return;
     const k = this.k;
     const sh: P3 = [-2 * k, this.y0 - 6.5 * k, side * 18.5 * k];
     const [el, h] = this.ik(sh, hand, 27 * k, 25 * k, [-0.6, -1, side * 0.9]);
@@ -199,6 +225,7 @@ export class Rig {
   }
 
   private torso(color: string, glow: number): void {
+    if (this.bodyless) return;
     const k = this.k;
     const top = this.y0 - 2.5 * k;
     const cx = -2.2 * k;
@@ -254,6 +281,10 @@ export class Rig {
   update(f: RigFrame, center: THREE.Vector3): void {
     const B = this.beams;
     B.begin();
+    for (let j = 0; j < 3; j++) {
+      this.lo[j] = Infinity;
+      this.hi[j] = -Infinity;
+    }
     const k = this.k;
     const col = this.color;
     const act = f.notes.filter((n) => n[0] <= f.t && f.t < n[1] + 0.03);
@@ -264,7 +295,7 @@ export class Rig {
     switch (this.kind) {
       case "lead":
       case "beatbox":
-        this.microphone(lips, f.level);
+        if (!this.bodyless) this.microphone(lips, f.level);
         break;
       case "singer":
       case "choir":
@@ -534,8 +565,8 @@ export class Rig {
       }
     }
     // a seat under the drummer
-    this.ring([-3 * k, Y - 64 * k, 0], [1, 0, 0], [0, 0, 1], 9 * k, 9 * k, col, 1, 0.5, 24);
-    this.P([[-3 * k, Y - 64 * k, 0], [-3 * k, Y - 76 * k, 0]], col, 1, 0.5);
+    if (!this.bodyless) this.ring([-3 * k, Y - 64 * k, 0], [1, 0, 0], [0, 0, 1], 9 * k, 9 * k, col, 1, 0.5, 24);
+    if (!this.bodyless) this.P([[-3 * k, Y - 64 * k, 0], [-3 * k, Y - 76 * k, 0]], col, 1, 0.5);
     // the sticks: each hand lifts towards its next hit and lands on it
     const handHits = (hand: 1 | -1) =>
       f.notes

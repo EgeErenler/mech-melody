@@ -59,57 +59,68 @@ interface Cell {
   h: number;
   /** the head's share of the cell (the rest is the instrument) */
   headH: number;
+  /** where this cell is drawn in the shared WebGL canvas (cells may overlap on screen, not there) */
+  gx?: number;
+  gy?: number;
 }
 
-/** where each part sits: the lead big on top, the other voices in a row of busts, the band below */
-export function layout(parts: StudioPart[], top = 200, bottom = 1470): Cell[] {
-  const pad = 12;
-  const lead = parts.findIndex((p) => p.kind === "voice" && (p.role ?? "lead") === "lead");
-  const voices = parts.map((p, i) => i).filter((i) => i !== lead && parts[i].kind === "voice");
-  const band = parts.map((p, i) => i).filter((i) => parts[i].kind === "instrument");
-  const perV = voices.length <= 4 ? Math.max(1, voices.length) : Math.ceil(voices.length / Math.ceil(voices.length / 4));
-  const rowsV = voices.length ? Math.ceil(voices.length / perV) : 0;
-  const perB = band.length <= 3 ? Math.max(1, band.length) : band.length === 4 ? 2 : 3;
-  const rowsB = band.length ? Math.ceil(band.length / perB) : 0;
-  let hV = rowsV * (perV <= 2 ? 330 : 280);
-  let hB = rowsB * (perB <= 2 ? 400 : 340);
-  const area = bottom - top;
-  let hL = lead >= 0 ? area - hV - hB : 0;
-  const minLead = lead >= 0 ? 430 : 0;
-  if (hL < minLead) {
-    const s = (area - minLead) / Math.max(1, hV + hB);
-    hV *= s;
-    hB *= s;
-    hL = minLead;
-  } else if (lead < 0) {
-    const s = area / Math.max(1, hV + hB);
-    hV *= s;
-    hB *= s;
-  }
+/** where each part sits: the lead's head big in the middle; the instruments and the other voices
+ *  small along the bottom (voices at the outside, instruments between them), heads cut by the frame */
+export function layout(parts: StudioPart[]): Cell[] {
   const cells: Cell[] = new Array(parts.length);
-  let y = top;
-  if (lead >= 0) {
-    cells[lead] = { x: pad / 2, y: y + pad / 2, w: W - pad, h: hL - pad, headH: hL - pad };
-    y += hL;
+  const lead = parts.findIndex((p) => p.kind === "voice" && (p.role ?? "lead") === "lead");
+  const voices = parts.map((_, i) => i).filter((i) => i !== lead && parts[i].kind === "voice");
+  const band = parts.map((_, i) => i).filter((i) => parts[i].kind === "instrument");
+  const others = voices.length + band.length;
+  const leadH = others ? 1060 : 1300;
+  if (lead >= 0) cells[lead] = { x: 0, y: 175, w: W, h: leadH, headH: leadH };
+  // the bottom: voices split to the two sides, the band in the middle
+  const half = Math.ceil(voices.length / 2);
+  const order = [...voices.slice(0, half), ...band, ...voices.slice(half)];
+  const rows = order.length > 6 ? 2 : 1;
+  const per = Math.ceil(order.length / rows);
+  const top = lead >= 0 ? (rows === 1 ? 1130 : 1105) : 300;
+  const rh = rows === 1 ? 360 : 205;
+  order.forEach((id, i) => {
+    const r = Math.floor(i / per);
+    const inRow = Math.min(per, order.length - r * per);
+    const cw = Math.round(W / inRow);
+    const isInst = parts[id].kind === "instrument";
+    const h = isInst ? Math.round(rh * 0.85) : rh;
+    // the second row sits half a pane over, between the heads of the first
+    const shift = r % 2 && inRow < per + 1 ? 0 : 0;
+    cells[id] = { x: (i % per) * cw + shift, y: top + r * (rh - 15) + (isInst || rows > 1 ? 0 : 30), w: cw, h, headH: h };
+  });
+  // pack the cells into the WebGL canvas, shelf by shelf
+  let gx = 0, gy = 0, shelf = 0;
+  for (const c of cells) {
+    if (!c) continue;
+    if (gx + c.w > 2200) {
+      gx = 0;
+      gy += shelf;
+      shelf = 0;
+    }
+    c.gx = gx;
+    c.gy = gy;
+    gx += c.w;
+    shelf = Math.max(shelf, c.headH);
   }
-  const rows = (ids: number[], per: number, total: number) => {
-    const n = Math.ceil(ids.length / per);
-    const rh = total / Math.max(1, n);
-    ids.forEach((id, i) => {
-      const r = Math.floor(i / per);
-      const inRow = Math.min(per, ids.length - r * per);
-      const cw = W / inRow;
-      const c = i % per;
-      cells[id] = { x: Math.round(c * cw + pad / 2), y: Math.round(y + r * rh + pad / 2), w: Math.round(cw - pad), h: Math.round(rh - pad), headH: Math.round(rh - pad) };
-    });
-    y += total;
-  };
-  if (voices.length) rows(voices, perV, hV);
-  if (band.length) rows(band, perB, hB);
   return cells;
 }
 
+/** the WebGL canvas holding every cell */
+export function atlasSize(cells: Cell[]): [number, number] {
+  let w = 1, h = 1;
+  for (const c of cells) if (c) {
+    w = Math.max(w, (c.gx ?? 0) + c.w);
+    h = Math.max(h, (c.gy ?? 0) + c.headH);
+  }
+  return [w, h];
+}
+
 const BEAT_WORD: Record<string, string> = { B: "BOOM", Pf: "PF", K: "KA", "^K": "K!", t: "TS", tss: "TSSS", kch: "KSHH", m: "MM", "!": "TOK", "P!": "POP" };
+
+const isLead = (p: StudioPart) => p.kind === "voice" && (p.role ?? "lead") === "lead";
 
 function rigKind(p: StudioPart): RigKind {
   if (p.kind === "instrument") return (p.instrument ?? "synth") as RigKind;
@@ -175,35 +186,58 @@ class Member {
     return b - Math.floor(b);
   }
 
-  private frameState: { f: ReturnType<VoiceModel["frame"]>; a: ReturnType<typeof VoiceModel.articFromArray>; singing: boolean } | null = null;
+  private frameState: { f: ReturnType<VoiceModel["frame"]> | null; a: ReturnType<typeof VoiceModel.articFromArray>; singing: boolean } | null = null;
 
   /** draw the head into its own viewport of the shared WebGL canvas (one readback for the band) */
-  renderGL(gl: THREE.WebGLRenderer, t: number, dt: number): void {
-    const { x, y, w } = this.cell;
+  renderGL(gl: THREE.WebGLRenderer, glH: number, t: number, dt: number): void {
+    const { w } = this.cell;
+    const gx = this.cell.gx ?? 0, gy = this.cell.gy ?? 0;
     const hh = this.cell.headH;
     const r = this.r;
     r.resize(w, hh);
-    const tele = this.track ? this.track.message(this.track.indexAt(t)) : null;
-    const singing = !!tele && tele.t.outRms > 1e-4;
-    const a = tele ? VoiceModel.articFromArray(tele.t.artic) : NEUTRAL;
-    r.face.update(singing ? tele : null, dt);
-    // the camera: the turned home view, swaying a little with the beat
+    this.rig.beams.setResolution(w, hh);
     const ph = this.beat(t);
+    const sway = 0.06 * Math.sin(2 * Math.PI * (ph / 2 + (t * this.show.bpm) / 120)) + 0.04 * Math.sin(t * 0.37 + this.cell.x);
     const bounds = r.bounds(this.model);
-    this.rig.fit(bounds.y0, bounds.k);
-    const fr = this.rig.framing(bounds.y1, this.facing, this.cell.w / this.cell.headH);
-    const off = fr.dir.clone().multiplyScalar(fr.dist);
-    const sway = (this.part.kind === "instrument" ? 0.07 : 0.05) * Math.sin(2 * Math.PI * (ph / 2 + (t * this.show.bpm) / 120));
-    off.applyAxisAngle(new THREE.Vector3(0, 1, 0), sway + 0.04 * Math.sin(t * 0.37 + this.cell.x));
-    r.camera.position.copy(fr.target).add(off);
-    r.camera.lookAt(fr.target);
-    const f = this.model.frame(a);
-    r.update(this.model, f, a, singing ? tele : null, VIEW, dt);
-    const level = tele ? Math.min(1, Math.sqrt(tele.t.outRms) * 4) : 0;
-    this.rig.update({ t, dt, level, notes: this.notes.length ? this.notes : (this.part.hits ?? []).map(([ht]) => [ht, ht + 0.1, 36, 100] as [number, number, number, number]) }, bounds.center);
-    const by = H - y - hh; // WebGL counts rows from the bottom
-    gl.setViewport(x, by, w, hh);
-    gl.setScissor(x, by, w, hh);
+    let tele = null, singing = false, f = null as ReturnType<VoiceModel["frame"]> | null, a = NEUTRAL;
+    if (this.part.kind === "instrument") {
+      // the instrument alone: drawn first, then the camera fitted to what was drawn
+      this.rig.fit(bounds.y0, bounds.k);
+      this.rig.update({ t, dt, level: 0, notes: this.notes }, bounds.center);
+      const fr = this.rig.frameOnDrawing(w / hh, this.facing);
+      const off = fr.dir.clone().multiplyScalar(fr.dist).applyAxisAngle(new THREE.Vector3(0, 1, 0), sway);
+      r.camera.position.copy(fr.target).add(off);
+      r.camera.lookAt(fr.target);
+      const fog = r.scene.fog as THREE.Fog;
+      fog.near = fr.dist - 200;
+      fog.far = fr.dist + 400;
+    } else {
+      tele = this.track ? this.track.message(this.track.indexAt(t)) : null;
+      singing = !!tele && tele.t.outRms > 1e-4;
+      a = tele ? VoiceModel.articFromArray(tele.t.artic) : NEUTRAL;
+      r.face.update(singing ? tele : null, dt);
+      const lead = (this.part.role ?? "lead") === "lead";
+      // the head alone, filling its pane: the lead whole and big; the others from the chin up, cut by the frame
+      const p = r.poses(this.model);
+      const lo = lead ? bounds.y0 + 1 * bounds.k : bounds.y0 + 9 * bounds.k;
+      const hi = bounds.y1 + (lead ? 1.5 : 0.5) * bounds.k;
+      const half = Math.tan((r.camera.fov * Math.PI) / 360);
+      const dist = (lead ? 1.04 : 0.86) * Math.max((hi - lo) / 2 / half, (hi - lo) * 0.62 / (half * (w / hh)));
+      const target = new THREE.Vector3(p.target.x + (lead ? 1.5 : 0) * bounds.k, (lo + hi) / 2 - (lead ? 0 : 3 * bounds.k), 0);
+      const off = p.home.clone().sub(p.target).normalize().multiplyScalar(dist).applyAxisAngle(new THREE.Vector3(0, 1, 0), sway);
+      r.camera.position.copy(target).add(off);
+      r.camera.lookAt(target);
+      // the lead's head in the middle of the screen (its words take the space to its right)
+      if (lead) {
+        r.camera.setViewOffset(w, hh, -Math.round(w * 0.07 * this.facing), 0, w, hh);
+        r.camera.updateProjectionMatrix();
+      }
+      f = this.model.frame(a);
+      r.update(this.model, f, a, singing ? tele : null, VIEW, dt);
+    }
+    const by = glH - gy - hh; // WebGL counts rows from the bottom
+    gl.setViewport(gx, by, w, hh);
+    gl.setScissor(gx, by, w, hh);
     gl.render(r.scene, r.camera);
     this.frameState = { f, a, singing };
   }
@@ -220,22 +254,25 @@ class Member {
     c.globalAlpha = 1;
     c.fillStyle = "#000";
     c.fillRect(0, 0, w, this.cell.h);
-    c.drawImage(glFrame, this.cell.x, this.cell.y, w, hh, 0, 0, w, hh);
-    // the band member's colour: keep each line's brightness, take the hue of the part
+    c.drawImage(glFrame, this.cell.gx ?? 0, this.cell.gy ?? 0, w, hh, 0, 0, w, hh);
+    // the member's colour: keep each line's brightness, take the hue of the part
     c.globalCompositeOperation = "color";
     c.fillStyle = this.part.color;
     c.fillRect(0, 0, w, hh);
     c.globalCompositeOperation = "source-over";
-    this.overlay?.(c, r.faceView(this.model, f, a), this.model, f, a, { w, h: hh, dt });
-    // name plate
-    const sub = this.part.kind === "instrument" ? (this.part.instrument ?? "").toUpperCase() : `${this.part.body.toUpperCase()} VOICE`;
-    label(c, this.part.name.toUpperCase(), 18, 30, { size: 22, color: this.part.color, weight: "m", ls: 0.12 });
-    if (sub !== this.part.name.toUpperCase()) label(c, sub, 18, 56, { size: 15, color: this.part.color, alpha: 0.6, ls: 0.16 });
-    c.save();
-    c.strokeStyle = rgba(this.part.color, singing || this.active(t).length ? 0.55 : 0.22);
-    c.lineWidth = 1.5;
-    c.strokeRect(1, 1, w - 2, this.cell.h - 2);
-    c.restore();
+    if (f) this.overlay?.(c, r.faceView(this.model, f, a), this.model, f, a, { w, h: hh, dt });
+    // soft edges, so overlapping panes melt into the black (no boxes)
+    c.globalCompositeOperation = "destination-in";
+    const gV = c.createLinearGradient(0, 0, 0, this.cell.h);
+    const lead = this.part.kind === "voice" && (this.part.role ?? "lead") === "lead";
+    gV.addColorStop(0, "rgba(0,0,0,1)");
+    gV.addColorStop(lead ? 0.9 : 0.75, "rgba(0,0,0,1)");
+    gV.addColorStop(1, lead ? "rgba(0,0,0,0.0)" : "rgba(0,0,0,0.15)");
+    c.fillStyle = gV;
+    c.fillRect(0, 0, w, this.cell.h);
+    c.globalCompositeOperation = "source-over";
+    void singing;
+    void t;
   }
 
   private active(t: number): [number, number, number, number][] {
@@ -273,10 +310,18 @@ export class Studio {
     this.gl.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.gl.setClearColor(0x000000, 1);
     this.gl.setPixelRatio(1);
-    this.gl.setSize(W, H, false);
     this.gl.setScissorTest(true);
-    this.glFrame.width = W;
-    this.glFrame.height = H;
+  }
+
+  private glH = 1;
+
+  /** size the shared WebGL canvas to hold every cell side by side */
+  private atlas(cells: Cell[]): void {
+    const [aw, ah] = atlasSize(cells);
+    this.gl.setSize(aw, ah, false);
+    this.glFrame.width = aw;
+    this.glFrame.height = ah;
+    this.glH = ah;
   }
 
   static async load(base: string, canvas: HTMLCanvasElement): Promise<Studio> {
@@ -288,12 +333,14 @@ export class Studio {
     const show = (await (await get("studio.json")).json()) as StudioShow;
     const s = new Studio(show, canvas);
     const cells = layout(show.parts);
+    s.atlas(cells);
     for (let i = 0; i < show.parts.length; i++) {
       const p = show.parts[i];
       const track = p.tele ? new TeleTrack(await (await get(p.tele)).arrayBuffer()) : null;
       const melody = p.melody ? ((await (await get(p.melody)).json()) as Melody) : null;
       const cell = cells[i];
       // heads in the left column look right, the right column looks left: towards each other
+      // the lead looks right (its words come out to the right); the others look towards the middle
       const facing: 1 | -1 = cell.w < W * 0.7 && cell.x + cell.w / 2 > W / 2 + 10 ? -1 : 1;
       s.members.push(new Member(p, cell, track, melody, facing, show, () => s.t));
     }
@@ -312,12 +359,16 @@ export class Studio {
     c.globalAlpha = 1;
     c.fillStyle = "#000";
     c.fillRect(0, 0, W, H);
-    for (const m of this.members) m.renderGL(this.gl, t, dt);
+    for (const m of this.members) m.renderGL(this.gl, this.glH, t, dt);
     const g = this.glFrame.getContext("2d")!;
     g.drawImage(this.glCanvas, 0, 0);
-    for (const m of this.members) {
+    // the lead last: it sits in front of everything
+    const order = [...this.members].sort((x, y) => (isLead(x.part) ? 1 : 0) - (isLead(y.part) ? 1 : 0));
+    for (const m of order) {
       m.draw(this.glFrame, t, dt);
+      c.globalCompositeOperation = "lighter";
       c.drawImage(m.canvas, m.cell.x, m.cell.y);
+      c.globalCompositeOperation = "source-over";
     }
     this.header(opts.cover);
     if (opts.cover) this.coverText();

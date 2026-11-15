@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import yaml
+from scipy.signal import butter, fftconvolve, sosfilt
 
 from . import instruments, lang, midi
 from .paths import CHIMERA, SHOWS, SONGS
@@ -200,6 +201,20 @@ def _melody(notes: list, syls: list[dict]) -> dict:
     return {"bpm": 60, "t0": round(t0, 4), "vibrato": 30, "notes": seq, "syllables": clean, "lyrics": " ".join(s["text"] for s in syls)}
 
 
+def _room(x: np.ndarray, seconds: float = 1.6) -> np.ndarray:
+    """A plain stereo room: each side convolved with its own decaying noise (no samples needed)."""
+    rng = np.random.default_rng(7)
+    t = np.arange(int(seconds * FS)) / FS
+    out = np.zeros_like(x)
+    for c in range(2):
+        ir = rng.standard_normal(len(t)) * np.exp(-t * 6.9 / seconds)
+        ir[: int(0.012 * FS)] = 0  # a short gap before the reflections
+        ir = sosfilt(butter(1, 5000 / (FS / 2), output="sos"), ir)
+        ir /= np.sqrt(np.sum(ir ** 2))
+        out[:, c] = fftconvolve(x[:, c], ir)[: len(x)]
+    return out.astype(np.float32)
+
+
 def _pan(x: np.ndarray, p: float) -> np.ndarray:
     a = (p + 1) * np.pi / 4
     return np.stack([x * np.cos(a), x * np.sin(a)], axis=1)
@@ -230,8 +245,9 @@ def build(slug: str, translate=None) -> dict:
             kind = p["instrument"]
             audio = instruments.render(kind, notes, max(n.end for n in notes) + 2, seed=k + 1) * float(p.get("gain", 1.0))
             _write_wav(out / f"i{k}.wav", audio)
+            group = "inst"
             entry.update(kind="instrument", instrument=kind, notes=[[round(n.start, 3), round(n.end, 3), n.pitch, n.vel] for n in notes])
-            stems.append((audio, float(p.get("pan", 0.0))))
+            stems.append((audio, float(p.get("pan", 0.0)), group))
             show_parts.append(entry)
             continue
         body = entry["body"]
@@ -242,7 +258,7 @@ def build(slug: str, translate=None) -> dict:
             (out / f"{stem}.hits.json").write_text(json.dumps({"hits": hits}))
             _engine(["render", "hits", str(out / f"{stem}.hits.json"), str(out / stem), body, "--tele", str(out / f"{stem}.tele")], p["name"])
             audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0))
-            stems.append((audio, float(p.get("pan", 0.0))))
+            stems.append((audio, float(p.get("pan", 0.0)), "voices"))
             entry.update(kind="voice", tele=f"{stem}.tele", role="beatbox", hits=[[h["t"], h["id"]] for h in hits])
             show_parts.append(entry)
             continue
@@ -280,20 +296,33 @@ def build(slug: str, translate=None) -> dict:
         stem = f"v{k}"
         (out / f"{stem}.melody.json").write_text(json.dumps(mel, ensure_ascii=False))
         _engine(["render", "notes", str(out / f"{stem}.melody.json"), str(out / stem), body, "--tele", str(out / f"{stem}.tele")], p["name"])
-        lift = 1.7 if p.get("role", "lead" if lead_timing is None else "backing") == "lead" else 1.0  # the lead sits on top of the mix
-        audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0)) * lift
-        stems.append((audio, float(p.get("pan", 0.0))))
+        is_lead = p.get("role", "lead" if lead_timing is None else "backing") == "lead"
+        audio = _read_wav(out / f"{stem}.wav") * float(p.get("gain", 1.0))
+        stems.append((audio, 0.0 if is_lead else float(p.get("pan", 0.0)), "lead" if is_lead else "voices"))
         entry.update(kind="voice", tele=f"{stem}.tele", melody=f"{stem}.melody.json", role=p.get("role", "lead" if lead_timing is None else "backing"))
         show_parts.append(entry)
         if lead_timing is None:
             lead_timing = (notes, syls)
 
-    # the mix: every stem on sample 0, panned, levelled, a gentle limiter
-    n = max(len(a) for a, _ in stems)
+    # the mix: the lead in front, the band a step behind, the other voices further back (quieter,
+    # darker, more room); every stem on sample 0
+    n = max(len(a) for a, _, _ in stems)
+    groups = {g: np.zeros((n, 2), np.float32) for g in ("lead", "voices", "inst")}
+    for a, pan, g in stems:
+        act = a[np.abs(a) > 1e-4]
+        a = a / max(1e-6, float(np.sqrt(np.mean(act ** 2))) if len(act) else 1.0)
+        groups[g][: len(a)] += _pan(a, pan)
+    level = {"lead": 0.2, "inst": 0.2 * 10 ** (-6 / 20), "voices": 0.2 * 10 ** (-11 / 20)}
+    wet = {"lead": 0.12, "inst": 0.15, "voices": 0.38}
     mix = np.zeros((n, 2), np.float32)
-    for a, pan in stems:
-        a = a / max(1e-6, float(np.sqrt(np.mean(a[a != 0] ** 2))) if np.any(a) else 1) * 0.12
-        mix[: len(a)] += _pan(a, pan)
+    for g, x in groups.items():
+        act = x[np.abs(x).max(axis=1) > 1e-4]
+        if not len(act):
+            continue
+        x = x * (level[g] / float(np.sqrt(np.mean(act ** 2))))
+        if g == "voices":
+            x = sosfilt(butter(2, 6000 / (FS / 2), output="sos"), x, axis=0).astype(np.float32)
+        mix += (1 - wet[g] * 0.5) * x + wet[g] * _room(x)
     mix /= max(1.0, float(np.abs(mix).max()) / 0.95)
     mix = np.tanh(mix * 1.3) / np.tanh(1.3)
     _write_wav(out / "mix.wav", mix.reshape(-1), channels=2)
