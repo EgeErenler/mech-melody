@@ -8,8 +8,8 @@ on:
       slug: { description: "short name for the folder, e.g. tarkan-simarik", required: true }
       title: { description: "song title", required: true }
       artist: { description: "artist", required: true }
-      start: { description: "start at (seconds)", default: "0" }
-      end: { description: "end at (seconds; 30-75 s makes a good Reel)", default: "60" }
+      start: { description: "start at (seconds), or auto = the strongest stretch (the chorus)", default: "auto" }
+      length: { description: "clip length in seconds (30-90 makes a good Reel)", default: "59" }
       arrangement: { description: "band = robots with instruments, acapella = voices only", type: choice, options: [band, acapella], default: band }
       lang: { description: "language of the words (auto, tr, en, es, fr, …)", default: "auto" }
       voice: { description: "lead robot voice", type: choice, options: [auto, female, male, child], default: auto }
@@ -52,7 +52,7 @@ jobs:
         run: python3 mech/ci/fetch_audio.py "$URL" work/source
       - name: listen
         run: |
-          python3 -m mech listen work/source "${{ inputs.slug }}" --start "${{ inputs.start }}" --end "${{ inputs.end }}" \
+          python3 -m mech listen work/source "${{ inputs.slug }}" --start "${{ inputs.start }}" --length "${{ inputs.length }}" \
             --title "${{ inputs.title }}" --artist "${{ inputs.artist }}" --lang "${{ inputs.lang }}" \
             --arrangement "${{ inputs.arrangement }}" --voice "${{ inputs.voice }}"
       - name: film it

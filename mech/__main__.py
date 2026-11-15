@@ -3,7 +3,7 @@
   python3 -m mech tracks <file.mid>                   list a MIDI file's tracks
   python3 -m mech new <slug> <file.mid> [--lang tr] [--title T] [--artist A]
                                                       start songs/<slug>/ from a MIDI file
-  python3 -m mech listen <audio> <slug> [--start S] [--end S] [--title T] [--artist A]
+  python3 -m mech listen <audio> <slug> [--start S|auto] [--end S] [--length 59] [--title T] [--artist A]
         [--lang auto] [--arrangement band|acapella] [--voice auto|male|female|child] [--lyrics F] [--stems DIR]
                                                       hear a recording and write its robot arrangement
   python3 -m mech syllables <lang> "<lyrics>"         how the robots will read a line
@@ -99,10 +99,10 @@ def main(argv: list[str]) -> None:
         new(args)
     elif cmd == "listen":
         from . import listen
-        kw = dict(start=_opt(args, "--start"), end=_opt(args, "--end"), title=_opt(args, "--title"), artist=_opt(args, "--artist", ""),
+        kw = dict(start=_opt(args, "--start"), end=_opt(args, "--end"), length=_opt(args, "--length"), title=_opt(args, "--title"), artist=_opt(args, "--artist", ""),
                   language=_opt(args, "--lang", "auto"), arrangement=_opt(args, "--arrangement", "band"), voice=_opt(args, "--voice", "auto"),
                   lyrics_file=_opt(args, "--lyrics"), stems_dir=_opt(args, "--stems"))
-        kw["start"] = float(kw["start"]) if kw["start"] else None
+        kw["start"] = kw["start"] if kw["start"] == "auto" else (float(kw["start"]) if kw["start"] else None)
         kw["end"] = float(kw["end"]) if kw["end"] else None
         listen.run(args[0] if args else "", args[1], **kw)
     elif cmd == "syllables":

@@ -85,6 +85,61 @@ def loudness(y: np.ndarray) -> float:
     return float(10 * np.log10(np.mean(y ** 2) + 1e-12))
 
 
+# ------------------------------------------------------------------ the best stretch of the song
+
+def best_window(path: Path, length: float, skip_intro: float = 8.0) -> tuple[float, dict]:
+    """Where the strongest `length` seconds start: lots of what the song repeats (the chorus),
+    loud and busy, starting on a section change at a bar line, and not the very beginning."""
+    import librosa
+    y, _ = librosa.load(str(path), sr=SR, mono=True)
+    dur = len(y) / SR
+    if dur <= length + 1:
+        return 0.0, {"reason": "the song is shorter than the clip"}
+    hop = 512
+    _, beats = librosa.beat.beat_track(y=y, sr=SR, hop_length=hop)
+    if len(beats) < 32:
+        return max(0.0, min(dur - length, dur * 0.3)), {"reason": "no steady beat"}
+    chroma = librosa.feature.chroma_cqt(y=y, sr=SR, hop_length=hop)
+    mfcc = librosa.feature.mfcc(y=y, sr=SR, hop_length=hop, n_mfcc=13)
+    rms = librosa.feature.rms(y=y, hop_length=hop)[0]
+    feat = np.vstack([librosa.util.normalize(chroma, axis=0), 0.5 * librosa.util.normalize(mfcc[1:], axis=1)])
+    bs = librosa.util.sync(feat, beats, aggregate=np.median)
+    br = librosa.util.sync(rms[None, :], beats, aggregate=np.mean)[0]
+    bt = librosa.frames_to_time(np.r_[beats, beats[-1] + 1][: bs.shape[1]], sr=SR, hop_length=hop)
+    n = bs.shape[1]
+    # repetition: how strongly each beat recurs elsewhere (not just next door), over 8-beat stacks
+    stack = librosa.feature.stack_memory(bs, n_steps=8, delay=1)
+    R = librosa.segment.recurrence_matrix(stack, mode="affinity", k=max(3, n // 12), width=16, sym=True)
+    rep = np.asarray(R.sum(axis=1)).ravel()
+    norm = lambda x: (x - x.min()) / (x.max() - x.min() + 1e-9)
+    score = 0.6 * norm(rep) + 0.4 * norm(br)
+    # section changes: a checkerboard novelty on the self-similarity
+    S = np.asarray(librosa.segment.recurrence_matrix(bs, mode="affinity", sym=True, width=1, k=max(3, n // 4)))
+    w = 8
+    kern = np.kron(np.array([[1, -1], [-1, 1]]), np.ones((w, w)))
+    nov = np.zeros(n)
+    for i in range(w, n - w):
+        nov[i] = max(0.0, float(np.sum(S[i - w : i + w, i - w : i + w] * kern)))
+    nov = norm(nov)
+    # bar lines: the beat phase (of 4) carrying the most energy
+    phase = int(np.argmax([br[p::4].sum() for p in range(4)]))
+    best, best_s, why = -1e9, 0.0, {}
+    for i in range(phase, n, 4):
+        t0 = float(bt[i])
+        if t0 < skip_intro or t0 + length > dur - 0.5:
+            continue
+        j = int(np.searchsorted(bt, t0 + length))
+        sc = float(score[i:j].mean()) + 0.35 * float(nov[max(0, i - 1) : i + 2].max())
+        # the chorus should come early in the clip, not in its last seconds
+        k = int(np.searchsorted(bt, t0 + length * 0.4))
+        sc += 0.15 * float(score[i:k].mean() - score[k:j].mean())
+        if sc > best:
+            best, best_s, why = sc, t0, {"score": round(sc, 3), "repetition": round(float(norm(rep)[i:j].mean()), 3), "loudness": round(float(norm(br)[i:j].mean()), 3)}
+    if best < -1e8:
+        best_s = max(0.0, min(dur - length, dur * 0.3))
+    return round(best_s, 2), why
+
+
 # ------------------------------------------------------------------ tempo
 
 def tempo(y: np.ndarray) -> tuple[float, float]:
@@ -434,7 +489,7 @@ def write_midi(path: Path, tracks: list[tuple[str, list[N], int]]) -> None:
     mid.save(str(path))
 
 
-def run(audio: str, slug: str, *, start=None, end=None, title=None, artist="", language="auto", arrangement="band",
+def run(audio: str, slug: str, *, start=None, end=None, length=None, title=None, artist="", language="auto", arrangement="band",
         voice="auto", lyrics_file=None, stems_dir=None) -> Path:
     out = SONGS / slug
     work = WORK / slug
@@ -445,6 +500,13 @@ def run(audio: str, slug: str, *, start=None, end=None, title=None, artist="", l
         mix = Path(audio) if audio and Path(audio).exists() else stems["vocals"]
         offset = 0.0
     else:
+        if start == "auto":
+            L = float(length or 59)
+            start, why = best_window(Path(audio), L)
+            end = start + L
+            log(f"the best {L:.0f} s start at {start:.1f} s ({why})")
+        elif start is not None and length and not end:
+            end = float(start) + float(length)
         mix = clip(Path(audio), work, start, end)
         stems = separate(mix, work)
         offset = 0.0
@@ -528,7 +590,7 @@ def run(audio: str, slug: str, *, start=None, end=None, title=None, artist="", l
                 parts.append({"name": kind.capitalize(), "track": s.capitalize(), "instrument": kind, "gain": 0.55})
     write_midi(out / "arrangement.mid", tracks)
     spec = {"title": title or slug.replace("-", " ").title(), "artist": artist, "language": language, "midi": "arrangement.mid",
-            "arrangement": arrangement, "bpm": bpm, "start": 0, "end": round(duration + offset, 2), "parts": parts}
+            "arrangement": arrangement, "bpm": bpm, "start": 0, "end": round(duration + offset, 2), "fade_out": 1.5, "parts": parts}
     (out / "song.yaml").write_text("# Written by `python3 -m mech listen`. Edit freely: names, colours, bodies, gains.\n"
                                    + yaml.safe_dump(spec, allow_unicode=True, sort_keys=False, width=120), encoding="utf-8")
     log(f"wrote {out}/song.yaml with {len(parts)} parts")

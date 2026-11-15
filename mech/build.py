@@ -325,6 +325,14 @@ def build(slug: str, translate=None) -> dict:
         mix += (1 - wet[g] * 0.5) * x + wet[g] * _room(x)
     mix /= max(1.0, float(np.abs(mix).max()) / 0.95)
     mix = np.tanh(mix * 1.3) / np.tanh(1.3)
+    # a clip cut from the middle of a song: a quick fade in, a gentle fade out at the end
+    if spec.get("fade_out"):
+        end_s = min(n, int((float(spec.get("end", n / FS)) - float(spec.get("start", 0)) + LEAD_IN) * FS))
+        fo = int(float(spec["fade_out"]) * FS)
+        mix[max(0, end_s - fo) : end_s] *= np.linspace(1, 0, min(fo, end_s))[:, None]
+        mix[end_s:] = 0
+        fi = int(0.25 * FS)
+        mix[int(LEAD_IN * FS) : int(LEAD_IN * FS) + fi] *= np.linspace(0, 1, fi)[:, None]
     _write_wav(out / "mix.wav", mix.reshape(-1), channels=2)
     duration = round(n / FS + 0.6, 3)
 
