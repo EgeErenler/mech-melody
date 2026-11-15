@@ -1,0 +1,26 @@
+name: wasm snapshot
+# Builds the engine's wasm and publishes it to the `wasm-snapshot` branch, so a machine
+# without the wasm32 Rust target can still run the studio renderer locally.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["crates/**", "Cargo.*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -p chimera-wasm --release --target wasm32-unknown-unknown
+      - name: publish
+        run: |
+          mkdir /tmp/snap && cp target/wasm32-unknown-unknown/release/chimera_wasm.wasm /tmp/snap/chimera.wasm
+          echo "${GITHUB_SHA}" > /tmp/snap/SOURCE_COMMIT
+          cd /tmp/snap && git init -q -b wasm-snapshot && git add . \
+            && git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -qm "wasm for ${GITHUB_SHA}" \
+            && git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}" wasm-snapshot
