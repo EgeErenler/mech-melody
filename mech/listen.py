@@ -303,8 +303,16 @@ def align(lines: list[dict], notes: list[N], language: str) -> tuple[list[N], li
             if not idx:  # no note starts inside the word: the note sounding at its middle
                 mid = (w["t0"] + w["t1"]) / 2
                 idx = [i for i, n in enumerate(notes) if not used[i] and n.start <= mid < n.end][:1]
-            if not idx:
-                continue
+            if not idx:  # every note here is taken: share the last one sounding before the word
+                k = max((i for i, m in enumerate(out_notes) if m.start < w["t0"] - 0.05), default=-1, key=lambda i: out_notes[i].start)
+                g = out_notes[k] if k >= 0 else None
+                if g is None or w["t0"] - g.end > 0.6:
+                    continue
+                cut = max((g.start + min(g.end, w["t1"])) / 2, min(w["t0"], g.end - 0.1))
+                notes.append(N(cut, max(g.end, cut + 0.12), g.pitch, g.vel))
+                used.append(False)
+                g.end = cut
+                idx = [len(notes) - 1]
             group = [notes[i] for i in idx]
             for i in idx:
                 used[i] = True
@@ -340,6 +348,12 @@ def align(lines: list[dict], notes: list[N], language: str) -> tuple[list[N], li
     # one note at a time: trim overlaps from splitting
     for a, b in zip(out_notes, out_notes[1:]):
         if a.end > b.start:
+            a.end = b.start
+    # sung legato inside a line: karaoke MIDIs often play the tune staccato (a 0.1 s note, then
+    # a rest), and a syllable that short is all consonant, so words were swallowed. A note runs
+    # on to the next one in the same line unless the gap is a real breath.
+    for i, (a, b) in enumerate(zip(out_notes, out_notes[1:])):
+        if out_syls[i].get("line") == out_syls[i + 1].get("line") and not out_syls[i].get("phraseEnd") and 0 < b.start - a.end < 0.6:
             a.end = b.start
     keep = [i for i, n in enumerate(out_notes) if n.end - n.start > 0.04]
     return [out_notes[i] for i in keep], [out_syls[i] for i in keep]
