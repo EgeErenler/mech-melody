@@ -1,0 +1,66 @@
+# A traditional round (public domain) — the demo that shows every feature.
+title: Frère Jacques
+artist: Traditional
+language: fr            # tr | en | es | fr (any espeak-ng language works)
+midi: frere-jacques.mid
+# subtitles: omit to have Claude translate the lead's lines into English (cached)
+subtitles:
+  - Brother John, Brother John,
+  - Are you sleeping? Are you sleeping?
+  - Ring the morning bells, ring the morning bells,
+  - Ding, dang, dong. Ding, dang, dong.
+  - Brother John, Brother John,
+  - Are you sleeping? Are you sleeping?
+  - Ring the morning bells, ring the morning bells,
+  - Ding, dang, dong. Ding, dang, dong.
+  - Brother John, Brother John,
+  - Are you sleeping? Are you sleeping?
+  - Ring the morning bells, ring the morning bells,
+  - Ding, dang, dong. Ding, dang, dong.
+parts:
+  - name: Lead
+    track: Voice 1
+    body: female
+    color: gold
+    lyrics: |
+      Frè|re Jac|que, frè|re Jac|que,
+      Dor|mez vous? Dor|mez vous?
+      Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+      Ding, dang, dong. Ding, dang, dong.
+      Frè|re Jac|que, frè|re Jac|que,
+      Dor|mez vous? Dor|mez vous?
+      Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+      Ding, dang, dong. Ding, dang, dong.
+      Frè|re Jac|que, frè|re Jac|que,
+      Dor|mez vous? Dor|mez vous?
+      Son|nez les ma|ti|nes, son|nez les ma|ti|nes,
+      Ding, dang, dong. Ding, dang, dong.
+  - name: Second
+    track: Voice 2
+    body: male
+    color: blue
+    lyrics: "from: Lead"
+    pan: -0.4
+  - name: Third
+    track: Voice 3
+    body: child
+    color: pink
+    lyrics: "from: Lead"
+    pan: 0.4
+  - name: Guitar
+    track: Guitar
+    instrument: guitar
+    color: green
+    pan: -0.5
+    gain: 0.7
+  - name: Bass
+    track: Bass
+    instrument: bass
+    color: violet
+    gain: 0.8
+  - name: Drums
+    track: Drums
+    instrument: drums
+    color: cyan
+    pan: 0.2
+    gain: 0.6

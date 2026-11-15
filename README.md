@@ -1,3 +1,15 @@
+# mech.melody
+
+Robot heads that sing popular songs together (some play instruments), filmed as Instagram Reels
+with English subtitles, posted and answered automatically. Built on the CHIMERA physical-modeling
+voice synth below.
+
+- **Setup and daily use (Türkçe):** [docs/mech-melody.md](docs/mech-melody.md)
+- Pipeline code: [`mech/`](mech/) · studio renderer: [`src/studio/`](src/studio/) · songs: [`songs/`](songs/)
+- Automations: [`.github/workflows/`](.github/workflows/) (`publish a reel`, `answer comments`, `refresh instagram token`)
+
+---
+
 # CHIMERA
 
 A physical-modeling voice synthesizer in the browser. Every sound comes from a simulated

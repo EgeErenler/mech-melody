@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mech.melody studio</title>
+    <style>
+      html, body { margin: 0; background: #000; height: 100%; }
+      body { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; }
+      canvas { height: 92vh; aspect-ratio: 9 / 16; display: block; }
+      body.capture canvas { height: auto; width: 1080px; }
+      button { font: 16px sans-serif; padding: 6px 18px; }
+      body.capture button, #msg:empty { display: none; }
+      #msg { color: #ff8a70; font: 15px sans-serif; }
+    </style>
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+    <button id="play">Play</button>
+    <p id="msg"></p>
+    <script type="module" src="/src/studio/main.ts"></script>
+  </body>
+</html>

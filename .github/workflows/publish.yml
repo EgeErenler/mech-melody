@@ -1,0 +1,64 @@
+name: publish a reel
+# Every day: pick the next song (most requested first), sing it, film it, caption it, post it.
+on:
+  schedule:
+    - cron: "41 16 * * *"   # 16:41 UTC daily; change to taste (or see POSTS_PER_WEEK below)
+  workflow_dispatch:
+    inputs:
+      slug: { description: "song folder to post (empty: the next one)", required: false, default: "" }
+      dry_run: { description: "make the video but do not post", type: boolean, default: false }
+permissions:
+  contents: write      # commit data/ and create the media release
+  issues: write
+concurrency: { group: publish, cancel-in-progress: false }
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_API: ${{ vars.IG_API || 'instagram' }}
+      MEDIA_BASE_URL: ${{ vars.MEDIA_BASE_URL }}
+      GH_TOKEN: ${{ github.token }}
+      CHROME_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - name: skip days (POSTS_PER_WEEK)
+        id: gate
+        run: |
+          n="${{ vars.POSTS_PER_WEEK || 7 }}"; d=$(date -u +%u)
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$d" -gt "$n" ]; then echo "skip=1" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.gate.outputs.skip != '1'
+        uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - if: steps.gate.outputs.skip != '1'
+        uses: Swatinem/rust-cache@v2
+      - if: steps.gate.outputs.skip != '1'
+        uses: oven-sh/setup-bun@v2
+      - if: steps.gate.outputs.skip != '1'
+        uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: mech/requirements.txt }
+      - if: steps.gate.outputs.skip != '1'
+        name: tools
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q espeak-ng ffmpeg
+          pip install -q -r mech/requirements.txt
+          bun install --frozen-lockfile
+          bun run wasm
+          cargo build --release -p chimera-cli
+      - if: steps.gate.outputs.skip != '1'
+        name: make and post the reel
+        run: |
+          args=""
+          [ -n "${{ inputs.slug }}" ] && args="${{ inputs.slug }}"
+          [ "${{ inputs.dry_run }}" = "true" ] && args="$args --dry-run"
+          python3 -m mech publish $args
+      - if: always() && steps.gate.outputs.skip != '1'
+        uses: actions/upload-artifact@v4
+        with: { name: reel, path: "out/*/*", retention-days: 14, if-no-files-found: ignore }
+      - if: success() && steps.gate.outputs.skip != '1' && inputs.dry_run != true
+        run: |
+          mech/ci/commit-state.sh "posted a reel"
+          mech/ci/queue-issue.sh

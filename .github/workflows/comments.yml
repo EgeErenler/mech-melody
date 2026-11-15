@@ -1,0 +1,32 @@
+name: answer comments
+# Every hour: reply to new comments on recent reels and queue song requests.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run: { description: "draft replies but do not send", type: boolean, default: false }
+permissions:
+  contents: write
+  issues: write
+concurrency: { group: comments, cancel-in-progress: false }
+jobs:
+  comments:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+      IG_USER_ID: ${{ secrets.IG_USER_ID }}
+      IG_API: ${{ vars.IG_API || 'instagram' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: mech/requirements.txt }
+      - run: pip install -q -r mech/requirements.txt
+      - run: python3 -m mech comments ${{ inputs.dry_run && '--dry-run' || '' }}
+      - if: inputs.dry_run != true
+        run: |
+          mech/ci/commit-state.sh "answered comments"
+          mech/ci/queue-issue.sh

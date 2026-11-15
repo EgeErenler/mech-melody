@@ -1,0 +1,17 @@
+name: refresh instagram token
+# Instagram Login tokens last 60 days. This renews it every 3 weeks and stores it back as the
+# IG_ACCESS_TOKEN secret. Needs a GH_PAT secret (fine-grained token, this repo, "Secrets: write").
+on:
+  schedule:
+    - cron: "7 5 */21 * *"
+  workflow_dispatch:
+jobs:
+  refresh:
+    if: vars.IG_API != 'facebook'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          new=$(IG_ACCESS_TOKEN='${{ secrets.IG_ACCESS_TOKEN }}' python3 -m mech refresh-token)
+          echo "::add-mask::$new"
+          GH_TOKEN='${{ secrets.GH_PAT }}' gh secret set IG_ACCESS_TOKEN --body "$new" --repo "$GITHUB_REPOSITORY"

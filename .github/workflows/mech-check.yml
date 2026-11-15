@@ -1,0 +1,31 @@
+name: mech check
+# On every change to the pipeline: build the demo song and film 8 seconds of it.
+on:
+  push:
+    branches: [main]
+    paths: ["mech/**", "src/studio/**", "studio.html", "songs/**", ".github/workflows/mech-check.yml"]
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env: { CHROME_PATH: /usr/bin/google-chrome }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - uses: Swatinem/rust-cache@v2
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip, cache-dependency-path: mech/requirements.txt }
+      - run: |
+          sudo apt-get update -q && sudo apt-get install -y -q espeak-ng ffmpeg
+          pip install -q -r mech/requirements.txt
+          bun install --frozen-lockfile
+          bun run wasm
+          cargo build --release -p chimera-cli
+      - run: bunx tsc --noEmit
+      - run: python3 -m mech syllables tr "Anlamadım, anlamadım" && python3 -m mech syllables es "Corazón, baila conmigo"
+      - run: python3 -m mech video frere-jacques --seconds 8
+      - uses: actions/upload-artifact@v4
+        with: { name: demo-reel, path: "out/frere-jacques/*" }
