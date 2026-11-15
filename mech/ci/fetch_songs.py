@@ -42,6 +42,11 @@ def fetch_midi(url: str) -> bytes:
         get(op, url)
         time.sleep(2)
         data = get(op, f"https://freemidi.org/getter-{m.group(1)}", referer=url)
+    elif "onlinesequencer.net" in url:
+        # sequences export to MIDI in the browser; the server hands out the notes as protobuf,
+        # kept as source*.osproto and turned into MIDI by mech/osproto.py
+        sid = re.search(r"id=(\d+)", url).group(1)
+        return get(op, f"https://onlinesequencer.net/app/api/get_proto.php?id={sid}", referer=f"https://onlinesequencer.net/{sid}")
     else:
         data = get(op, url)
     if not data.startswith(b"MThd"):
@@ -134,11 +139,12 @@ def main() -> None:
         d = ROOT / "songs" / r["slug"]
         d.mkdir(parents=True, exist_ok=True)
         got = 0
-        if not r.get("midi") and not any(d.glob("source*.mid")):
+        if not r.get("midi") and not any(d.glob("source*.mid")) and not any(d.glob("source*.osproto")):
             r["midi"] = search_midi(r["title"], r["artist"])
             print(f"{r['slug']}: search found {len(r['midi'])}: {r['midi']}")
         for i, url in enumerate(r.get("midi") or []):
-            out = d / ("source.mid" if i == 0 else f"source-{i + 1}.mid")
+            ext = "osproto" if "onlinesequencer.net" in url else "mid"
+            out = d / (f"source.{ext}" if i == 0 else f"source-{i + 1}.{ext}")
             if out.exists():
                 got += 1
                 continue
