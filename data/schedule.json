@@ -1,11 +1,11 @@
 [
  {"slug": "jingle-bells", "at": "2026-11-15T17:00:00Z"},
- {"slug": "deck-the-halls", "at": "2026-11-15T20:00:00Z"},
- {"slug": "we-wish-you", "at": "2026-11-15T23:00:00Z"},
- {"slug": "blinding-lights", "at": "2026-11-16T12:00:00Z"},
- {"slug": "someone-like-you", "at": "2026-11-16T16:00:00Z"},
- {"slug": "nothing-else-matters", "at": "2026-11-16T20:00:00Z"},
- {"slug": "uptown-funk", "at": "2026-11-17T12:00:00Z"},
- {"slug": "rolling-in-the-deep", "at": "2026-11-17T16:00:00Z"},
- {"slug": "viva-la-vida", "at": "2026-11-17T20:00:00Z"}
+ {"slug": "blinding-lights"},
+ {"slug": "deck-the-halls"},
+ {"slug": "someone-like-you"},
+ {"slug": "uptown-funk"},
+ {"slug": "nothing-else-matters"},
+ {"slug": "we-wish-you"},
+ {"slug": "rolling-in-the-deep"},
+ {"slug": "viva-la-vida"}
 ]

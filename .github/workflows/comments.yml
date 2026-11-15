@@ -2,7 +2,7 @@ name: answer comments
 # Every hour: reply to new comments on recent reels and queue song requests.
 on:
   schedule:
-    - cron: "23 */3 * * *"   # every 3 hours (each run is a billed minute in a private repo)
+    - cron: "23 */2 * * *"   # every 2 hours (each run is a billed minute in a private repo)
   workflow_dispatch:
     inputs:
       dry_run: { description: "draft replies but do not send", type: boolean, default: false }

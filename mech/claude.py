@@ -88,10 +88,11 @@ def triage_comment(comment: str, username: str, post_title: str, queue_titles: l
         "  kind: one of request | praise | question | criticism | spam | abuse | other\n"
         "  song: for a request, the song title as commonly written (else null)\n"
         "  artist: for a request, the artist (else null; guess only if you are sure)\n"
-        "  reply: our reply, in the commenter's language, at most 2 short sentences, mentioning them is not needed. "
-        "For a request: thank them and say we added it to the robots' queue (or that it is already queued and got their vote). "
-        "For a question: answer honestly (the voices are physical simulations of a human airway, not samples or AI voice clones). "
-        "For criticism: gracious, never defensive. For spam or abuse: null (we do not answer).",
+        "  reply: our reply, in the commenter's language. Keep it very short and warm: usually a few words "
+        "plus an emoji (e.g. 'Thank you! 🤖🎶'), sometimes only emojis for a simple compliment. Never more than one sentence. "
+        "For a request: always positive, e.g. that the robots are on it / it is in the queue (or already queued, their vote counts). "
+        "For a question: a short honest answer (the voices are physical simulations of a human airway, not samples or AI voice clones). "
+        "For criticism: kind and brief, never defensive. For spam or abuse: null (we do not answer).",
         model=FAST_MODEL,
         max_tokens=400,
     )
