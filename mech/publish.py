@@ -84,7 +84,11 @@ def run(slug: str | None = None, dry: bool = False, fps: int = 30) -> dict | Non
         video, cover = render(slug, fps)
     entry = next((e for e in state.queue() if e["key"] in (spec.get("request"), state.key(spec.get("title", ""), spec.get("artist", ""))) and e["status"] != "published"), None)
     requested_by = entry["requested_by"][:5] if entry else []
-    text = claude.caption(show, requested_by)
+    own = SONGS / slug / "caption.txt"  # a caption written by hand wins
+    text = own.read_text(encoding="utf-8").strip() if own.exists() else claude.caption(show, requested_by)
+    own_cover = SONGS / slug / "cover.jpg"
+    if own_cover.exists():
+        cover = own_cover
     (OUT / slug / "caption.txt").write_text(text, encoding="utf-8")
     print("caption:\n" + text)
     if dry:

@@ -256,7 +256,7 @@ class Member {
   }
 
   /** the 2D layer: the head's pixels in the part's colour, the words, the instrument, the frame */
-  draw(glFrame: HTMLCanvasElement, t: number, dt: number): void {
+  draw(glFrame: HTMLCanvasElement, t: number, dt: number, bare = false): void {
     const { w } = this.cell;
     const hh = this.cell.headH;
     const r = this.r;
@@ -273,7 +273,7 @@ class Member {
     c.fillStyle = this.part.color;
     c.fillRect(0, 0, w, hh);
     c.globalCompositeOperation = "source-over";
-    if (f) this.overlay?.(c, r.faceView(this.model, f, a), this.model, f, a, { w, h: hh, dt });
+    if (f && !bare) this.overlay?.(c, r.faceView(this.model, f, a), this.model, f, a, { w, h: hh, dt });
     // soft edges, so overlapping panes melt into the black (no boxes)
     c.globalCompositeOperation = "destination-in";
     const gV = c.createLinearGradient(0, 0, 0, this.cell.h);
@@ -375,6 +375,19 @@ export class Studio {
     for (const m of this.members) m.renderGL(this.gl, this.glH, t, dt);
     const g = this.glFrame.getContext("2d")!;
     g.drawImage(this.glCanvas, 0, 0);
+    if (opts.cover) {
+      // the house cover: one look for every song, so the profile grid reads as a series. Only the
+      // lead's head, big, and the title, all inside the 3:4 crop the grid shows (y 240..1680).
+      const lead = this.members.find((m) => isLead(m.part)) ?? this.members[0];
+      lead.draw(this.glFrame, t, dt, true);
+      c.globalCompositeOperation = "lighter";
+      const s = 1.02;
+      c.drawImage(lead.canvas, (W - lead.cell.w * s) / 2, 300 - 40, lead.cell.w * s, lead.cell.h * s);
+      c.globalCompositeOperation = "source-over";
+      this.coverText();
+      this.glow.apply(this.canvas, c, 1);
+      return;
+    }
     // the lead last: it sits in front of everything
     const order = [...this.members].sort((x, y) => (isLead(x.part) ? 1 : 0) - (isLead(y.part) ? 1 : 0));
     for (const m of order) {
@@ -383,18 +396,17 @@ export class Studio {
       c.drawImage(m.canvas, m.cell.x, m.cell.y);
       c.globalCompositeOperation = "source-over";
     }
-    this.header(opts.cover);
-    if (opts.cover) this.coverText();
-    else this.subtitle(t);
-    this.footer(t, opts.cover);
+    this.header();
+    this.subtitle(t);
+    this.footer(t);
     this.glow.apply(this.canvas, c, 1);
   }
 
-  private header(cover?: boolean): void {
+  private header(): void {
     const c = this.ctx;
     const lead = this.show.parts[0]?.color ?? "#ffc45a";
     label(c, "MECH.MELODY", 40, 64, { size: 30, color: lead, weight: "m", ls: 0.3 });
-    if (!cover) {
+    {
       label(c, this.show.title.toUpperCase(), 40, 128, { size: 50, color: "#eef6f8", weight: "m", ls: 0.06 });
       label(c, `${this.show.artist.toUpperCase()}  ·  ${this.show.parts.length} ROBOTS`, 40, 172, { size: 22, color: "#eef6f8", alpha: 0.55, ls: 0.16 });
     }
@@ -432,24 +444,47 @@ export class Studio {
 
   private coverText(): void {
     const c = this.ctx;
+    const col = this.show.parts.find(isLead)?.color ?? this.show.parts[0]?.color ?? "#ffc45a";
     c.save();
-    c.fillStyle = "rgba(0,0,0,0.78)";
-    c.fillRect(0, 1380, W, 420);
+    // the wordmark at the top of the grid crop
+    label(c, "MECH.MELODY", W / 2, 292, { size: 34, color: col, weight: "m", ls: 0.42, align: "center" });
+    seg(c, W / 2 - 150, 322, W / 2 + 150, 322, col, 1.2, { alpha: 0.5 });
+    // a dark band behind the title so it reads over the head's neck
+    const g = c.createLinearGradient(0, 1250, 0, 1420);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.92)");
+    c.fillStyle = g;
+    c.fillRect(0, 1250, W, 170);
+    c.fillStyle = "rgba(0,0,0,0.92)";
+    c.fillRect(0, 1420, W, 500);
     c.textAlign = "center";
     c.textBaseline = "middle";
+    const title = this.show.title.toUpperCase();
     c.fillStyle = "#ffffff";
-    c.font = `800 ${fitSize(c, this.show.title.toUpperCase(), W - 100, 120, "800", "Archivo")}px Archivo`;
-    c.fillText(this.show.title.toUpperCase(), W / 2, 1520);
-    c.font = `500 46px Archivo`;
-    c.fillStyle = this.show.parts[0]?.color ?? "#ffc45a";
-    c.fillText(`${this.show.artist} · sung by ${this.show.parts.filter((p) => p.kind === "voice").length} robot voices`, W / 2, 1630);
+    c.font = `800 ${fitSize(c, title, W - 120, 128, "800", "Archivo")}px Archivo`;
+    c.fillText(title, W / 2, 1478);
+    c.font = `500 44px Archivo`;
+    c.fillStyle = col;
+    c.fillText(this.show.artist, W / 2, 1572);
+    // the series badge: the same pill on every cover
+    const badge = "ROBOT COVER";
+    c.font = `700 26px Archivo`;
+    const bw = c.measureText(badge).width + 56;
+    c.strokeStyle = col;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.roundRect(W / 2 - bw / 2, 1622, bw, 46, 23);
+    c.stroke();
+    c.fillStyle = col;
+    c.fillText(badge, W / 2, 1646);
     c.restore();
+    label(c, "@MECH.MELODY", W / 2, 1880, { size: 22, color: "#eef6f8", alpha: 0.5, align: "center", ls: 0.25 });
   }
 
-  private footer(t: number, cover?: boolean): void {
+  private footer(t: number): void {
     const c = this.ctx;
     const col = this.show.parts[0]?.color ?? "#ffc45a";
-    if (!cover) {
+    {
       const u = Math.min(1, t / this.show.duration);
       seg(c, 40, 1850, W - 40, 1850, col, 1, { alpha: 0.25 });
       seg(c, 40, 1850, 40 + (W - 80) * u, 1850, col, 3, { hot: true });

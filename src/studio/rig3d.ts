@@ -474,8 +474,14 @@ export class Rig {
   private violin(f: RigFrame, act: Note[]): void {
     const k = this.k, col = this.color;
     const chin: P3 = [3 * k, this.y0 - 8 * k, -9 * k];
-    const dir = norm([0.85, 0.1, -0.5]); // the scroll points forward and out to the left
-    const V3: Frame3 = frame(chin, dir, [0, 1, 0]);
+    let V3: Frame3;
+    if (this.bodyless) {
+      // on its own: face to the audience, the neck up and to the left, the bow across the strings
+      const dir = norm([0, 0.8, -0.6]);
+      V3 = { o: chin, u: dir, n: [1, 0, 0], v: cross([1, 0, 0], dir) };
+    } else {
+      V3 = frame(chin, norm([0.85, 0.1, -0.5]), [0, 1, 0]); // under the chin, scroll forward and out
+    }
     const outline: P3[] = [];
     for (let i = 0; i < 40; i++) {
       const t = (i / 40) * Math.PI * 2;

@@ -62,7 +62,7 @@ def caption(show: dict, requested_by: list[str]) -> str:
     voices = [p for p in show["parts"] if p["kind"] == "voice"]
     players = [p for p in show["parts"] if p["kind"] == "instrument"]
     if not available():
-        tags = "#robot #cover #vocalsynth #mechmelody"
+        tags = "#robot #cover #vocalsynth #mechmelody #music"
         return f"🤖 {show['title']} — {show['artist']}\n{len(voices)} robot voices, {len(players)} robot players.\n\n{tags}"
     return ask(
         "Write the Instagram Reel caption for our new video.\n"
@@ -72,8 +72,9 @@ def caption(show: dict, requested_by: list[str]) -> str:
         + ".\n"
         + (f"Requested in the comments by: {', '.join('@' + u for u in requested_by)} (thank them).\n" if requested_by else "")
         + "Rules: hook in the first line; credit the original artist clearly and say it is a robot cover; "
-        "invite people to request the next song in the comments; 2-4 short lines, then 8-12 relevant hashtags "
-        "(mix of the song/artist, language, robot/AI/music/cover tags). Plain text only.",
+        "invite people to request the next song in the comments; 2-4 short lines, then exactly 5 hashtags "
+        "(Instagram allows no more than 5): the song, the artist or genre, the season or trend if any, "
+        "#robot and #cover. No em dashes. Plain text only.",
         max_tokens=600,
     )
 

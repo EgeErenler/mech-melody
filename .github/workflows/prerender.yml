@@ -11,6 +11,7 @@ on:
       force: { description: "render again even if a release exists", type: boolean, default: false }
 permissions:
   contents: write
+concurrency: { group: prerender, cancel-in-progress: true }
 jobs:
   plan:
     runs-on: ubuntu-latest
