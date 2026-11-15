@@ -22,6 +22,7 @@ import type { BodyMix } from "../ui/body.ts";
 
 export const W = 1080;
 export const H = 1920;
+const SUPERSAMPLE = 2;
 
 export interface StudioPart {
   name: string;
@@ -200,8 +201,8 @@ class Member {
     const r = this.r;
     r.resize(w, hh);
     this.rig.beams.setResolution(w, hh);
-    const ph = this.beat(t);
-    const sway = 0.06 * Math.sin(2 * Math.PI * (ph / 2 + (t * this.show.bpm) / 120)) + 0.04 * Math.sin(t * 0.37 + this.cell.x);
+    // the heads hold still: a camera swaying with the beat read as heads rocking side to side
+    const sway = 0;
     const bounds = r.bounds(this.model);
     let tele = null, singing = false, f = null as ReturnType<VoiceModel["frame"]> | null, a = NEUTRAL;
     if (this.part.kind === "instrument") {
@@ -322,7 +323,8 @@ export class Studio {
     this.gl = new THREE.WebGLRenderer({ canvas: this.glCanvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
     this.gl.outputColorSpace = THREE.LinearSRGBColorSpace;
     this.gl.setClearColor(0x000000, 1);
-    this.gl.setPixelRatio(1);
+    // drawn at twice the size and averaged down: thin wireframe lines stay smooth, not stair-stepped
+    this.gl.setPixelRatio(SUPERSAMPLE);
     this.gl.setScissorTest(true);
   }
 
@@ -374,7 +376,9 @@ export class Studio {
     c.fillRect(0, 0, W, H);
     for (const m of this.members) m.renderGL(this.gl, this.glH, t, dt);
     const g = this.glFrame.getContext("2d")!;
-    g.drawImage(this.glCanvas, 0, 0);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
+    g.drawImage(this.glCanvas, 0, 0, this.glFrame.width, this.glFrame.height);
     if (opts.cover) {
       // the house cover: one look for every song, so the profile grid reads as a series. Only the
       // lead's head, big, and the title, all inside the 3:4 crop the grid shows (y 240..1680).

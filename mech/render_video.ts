@@ -94,7 +94,7 @@ try {
     for (let i = a; i < b; i++) {
       const jpg = await p.evaluate((k) => {
         window.studio!.frame(k);
-        return window.studio!.jpeg(0.92);
+        return window.studio!.jpeg(0.97);
       }, i);
       writeFileSync(resolve(frameDir, `${String(i).padStart(6, "0")}.jpg`), Buffer.from(jpg.split(",")[1], "base64"));
       if (++doneFrames % (fps * 5) === 0) console.log(`frame ${doneFrames}/${frames}  ${(doneFrames / ((Date.now() - t0) / 1000)).toFixed(2)} fps`);
@@ -113,7 +113,7 @@ try {
   await new Promise<void>((ok, bad) => {
     const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(fps), "-start_number", "0", "-i", resolve(frameDir, "%06d.jpg"),
       "-i", mixPath, "-map", "0:v", "-map", "1:a", "-t", String(seconds), "-af", norm,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", String(fps), "-fps_mode", "cfr",
+      "-c:v", "libx264", "-preset", "slow", "-crf", "15", "-tune", "animation", "-pix_fmt", "yuv420p", "-profile:v", "high", "-r", String(fps), "-fps_mode", "cfr",
       "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", mp4], { stdio: "inherit" });
     ff.on("close", (c) => (c === 0 ? ok() : bad(new Error(`ffmpeg exited ${c}`))));
   });
