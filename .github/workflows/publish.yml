@@ -5,7 +5,7 @@ name: publish a reel
 # With nothing scheduled, POST_HOUR (UTC, default 17) posts the next song in songs/ once a day.
 on:
   schedule:
-    - cron: "7 * * * *"
+    - cron: "7 8-23 * * *"   # hourly through the London day (private repos pay per minute)
   workflow_dispatch:
     inputs:
       slug: { description: "song folder to post now (empty: whatever is due)", required: false, default: "" }
