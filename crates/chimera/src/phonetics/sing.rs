@@ -52,6 +52,10 @@ fn consonants_at(segs: &[Segment], body: BodyMix, k: f64, hz: f64) -> Vec<Segmen
 
 /// a sung vowel keeps at least this long when a short note squeezes its consonants (s)
 const MIN_VOWEL: f64 = 0.05;
+/// the most of a note's span its consonants may take, before they are squeezed
+const CONSONANT_SHARE: f64 = 0.4;
+/// ...unless the span is short: up to this long is always allowed (s)
+const CONSONANT_FLOOR: f64 = 0.09;
 /// a squeezed consonant keeps at least this long (s); a flap is 16 ms
 const MIN_CONSONANT: f64 = 0.012;
 
@@ -62,7 +66,10 @@ const MIN_CONSONANT: f64 = 0.012;
 fn fit(groups: [&mut [Segment]; 2], span: f64) {
     let [a, b] = groups;
     let cons = total(a) + total(b);
-    let room = span - MIN_VOWEL;
+    // Singers keep the vowel: consonants get at most CONSONANT_SHARE of a note. At spoken
+    // lengths a coda "st" and the next onset "h" took 0.25 s of a 0.3 s note, so the vowel
+    // sounded for 50 ms and the word went silent.
+    let room = js_min(span - MIN_VOWEL, js_max(CONSONANT_SHARE * span, CONSONANT_FLOOR));
     if cons <= room || cons <= 0.0 {
         return;
     }
@@ -271,4 +278,28 @@ fn tail(syl: &Syllable, body: BodyMix, hz: f64) -> Vec<Segment> {
     }
     out.extend(consonants(&syl.coda, body, 0.7));
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn seg(ipa: &str, dur: f64) -> Segment {
+        Segment { ipa: ipa.to_string(), dur: Some(dur), ..Default::default() }
+    }
+
+    /// A 0.3 s note with a coda "st" and the next onset "h" at spoken lengths (0.25 s together)
+    /// left the vowel 50 ms and the sung word went silent. The vowel now keeps most of the note.
+    #[test]
+    fn consonants_leave_the_vowel_most_of_a_short_note() {
+        let mut coda = vec![seg("s", 0.11), seg("t", 0.07)];
+        let mut next = vec![seg("h", 0.07)];
+        fit([&mut coda[..], &mut next[..]], 0.3);
+        let cons = total(&coda) + total(&next);
+        assert!(cons <= 0.4 * 0.3 + 1e-9, "consonants take {cons:.3} s of 0.3 s");
+        // a long note keeps its consonants at full length
+        let mut coda = vec![seg("s", 0.11), seg("t", 0.07)];
+        fit([&mut coda[..], &mut []], 1.0);
+        assert!((total(&coda) - 0.18).abs() < 1e-9);
+    }
 }
