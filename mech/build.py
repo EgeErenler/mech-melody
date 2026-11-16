@@ -220,7 +220,41 @@ def _read_wav(path: Path) -> np.ndarray:
     return y
 
 
+MIN_SYLLABLE = 0.14  # s: shorter than this, a syllable's vowel never sounds and the word is lost
+
+
+def _room_for_syllables(notes: list, syls: list[dict]) -> tuple[list, list[dict]]:
+    """Give every sung syllable time to sound. A melisma note under MIN_SYLLABLE joins the note
+    before it (a quick ornament the voice can't articulate anyway); a syllable on a note under
+    MIN_SYLLABLE starts earlier, taking the time from the rest or the long note before it.
+    Rolling in the Deep had 14 such notes, sung 8.5 dB quieter than the rest (some 40 dB down),
+    which is where the words disappeared."""
+    import copy
+    ns, ss = [copy.copy(n) for n in notes], [dict(x) for x in syls]
+    i = 1
+    while i < len(ns):
+        n, prev = ns[i], ns[i - 1]
+        if ss[i].get("melisma") and n.end - n.start < MIN_SYLLABLE and n.start - prev.end < 0.05:
+            prev.end = n.end
+            for k in ("wordEnd", "phraseEnd"):  # the joined note may have closed the word
+                if ss[i].get(k):
+                    ss[i - 1][k] = True
+            del ns[i], ss[i]
+            continue
+        need = MIN_SYLLABLE - (n.end - n.start)
+        if need > 0:
+            free = n.start - prev.end  # a rest before it
+            if free < need:  # and the note before, down to MIN_SYLLABLE of its own
+                take = min(need - max(free, 0), (prev.end - prev.start) - MIN_SYLLABLE)
+                if take > 0:
+                    prev.end -= take
+            n.start = max(prev.end, n.start - need)
+        i += 1
+    return ns, ss
+
+
 def _melody(notes: list, syls: list[dict]) -> dict:
+    notes, syls = _room_for_syllables(notes, syls)
     t0 = notes[0].start
     seq, t = [], t0
     for n, nxt in zip(notes, notes[1:] + [None]):
@@ -241,6 +275,29 @@ def _presence(x: np.ndarray) -> np.ndarray:
     hp = sosfilt(butter(2, 90 / (FS / 2), btype="high", output="sos"), x, axis=0)
     band = sosfilt(butter(2, [2000 / (FS / 2), 5000 / (FS / 2)], btype="band", output="sos"), hp, axis=0)
     return (hp + 0.35 * band).astype(np.float32)
+
+
+def _ride(x: np.ndarray) -> np.ndarray:
+    """A vocal leveler: lift quiet syllables (close vowels like i, e and quick notes came out up
+    to 14 dB below the open ones) toward the singer's typical level, up to +9 dB, and pull the
+    loudest back up to 3 dB. Gain follows a 30 ms level, easing in 15 ms and out 120 ms; silence
+    (below -40 dB from the typical level) is left alone so breaths and rests stay quiet."""
+    mono = np.abs(x).max(axis=1) if x.ndim == 2 else np.abs(x)
+    hop = int(0.01 * FS)
+    n = len(mono) // hop
+    lvl = np.sqrt(np.convolve((mono[: n * hop].reshape(n, hop).astype(np.float64) ** 2).mean(axis=1), np.ones(3) / 3, "same")) + 1e-9
+    voiced = lvl > 1e-5
+    if not voiced.any():
+        return x
+    typ = np.percentile(lvl[voiced], 75)
+    want = np.where(lvl > typ * 10 ** (-40 / 20), np.clip((typ / lvl) ** 0.7, 10 ** (-3 / 20), 10 ** (9 / 20)), 1.0)
+    out, g = np.empty(n), 1.0
+    for i, w in enumerate(want):
+        k = 1 - np.exp(-1 / (1.5 if w < g else 12))
+        g += (w - g) * k
+        out[i] = g
+    gain = np.interp(np.arange(len(mono)), np.arange(n) * hop + hop / 2, out).astype(np.float32)
+    return x * (gain[:, None] if x.ndim == 2 else gain)
 
 
 def _make_room_for(band: np.ndarray, lead: np.ndarray) -> np.ndarray:
@@ -436,7 +493,7 @@ def build(slug: str, translate=None) -> dict:
         if g == "voices":
             x = sosfilt(butter(2, 6000 / (FS / 2), output="sos"), x, axis=0).astype(np.float32)
         if g == "lead":
-            x = _presence(x)
+            x = _presence(_ride(x))
         if g == "inst":
             x = _make_room_for(x, groups["lead"])
         mix += (1 - wet[g] * 0.5) * x + wet[g] * _room(x)

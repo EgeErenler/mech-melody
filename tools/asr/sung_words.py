@@ -19,6 +19,8 @@ from faster_whisper import WhisperModel
 from scipy.signal import resample_poly
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, REPO)
+from mech import build  # noqa: E402
 
 
 def norm(w: str) -> str:
@@ -54,7 +56,8 @@ def main(slugs: list[str]) -> None:
     for slug in slugs:
         want = expected(slug)
         x, sr = sf.read(f"{REPO}/public/shows/{slug}/v0.wav", dtype="float32", always_2d=True)
-        x = resample_poly(x.mean(axis=1), 16000, sr).astype(np.float32)  # Whisper wants 16 kHz mono
+        x = build._ride(x)[:, 0]  # the lead as it sits in the mix (leveled)
+        x = resample_poly(x, 16000, sr).astype(np.float32)  # Whisper wants 16 kHz mono
         segs, _ = model.transcribe(x, beam_size=1, language="en",
                                    condition_on_previous_text=False, vad_filter=False)
         heard = [norm(w) for s in segs for w in s.text.split() if norm(w)]
