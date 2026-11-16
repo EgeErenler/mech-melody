@@ -13,7 +13,10 @@ import os
 import re
 import sys
 
+import numpy as np
+import soundfile as sf
 from faster_whisper import WhisperModel
+from scipy.signal import resample_poly
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -50,7 +53,9 @@ def main(slugs: list[str]) -> None:
     os.makedirs(f"{REPO}/out/judge", exist_ok=True)
     for slug in slugs:
         want = expected(slug)
-        segs, _ = model.transcribe(f"{REPO}/public/shows/{slug}/v0.wav", beam_size=1, language="en",
+        x, sr = sf.read(f"{REPO}/public/shows/{slug}/v0.wav", dtype="float32", always_2d=True)
+        x = resample_poly(x.mean(axis=1), 16000, sr).astype(np.float32)  # Whisper wants 16 kHz mono
+        segs, _ = model.transcribe(x, beam_size=1, language="en",
                                    condition_on_previous_text=False, vad_filter=False)
         heard = [norm(w) for s in segs for w in s.text.split() if norm(w)]
         sm = difflib.SequenceMatcher(a=[w["w"] for w in want], b=heard, autojunk=False)
